@@ -32,8 +32,10 @@ function Find-SettingsWindow {
             if ([GncSettingsApi]::IsWindowVisible($hwnd)) {
                 $title = New-Object System.Text.StringBuilder 256
                 [void][GncSettingsApi]::GetWindowText($hwnd, $title, $title.Capacity)
-                if ($title.ToString() -like '*Settings*' -or $title.ToString() -like '*Guidance*' -or
-                    $title.ToString() -like '*Orbit Control*' -or $title.ToString() -like '*设置*') {
+                $windowTitle = $title.ToString()
+                if ($windowTitle -like 'AeroGNC Lab v*' -and
+                    ($windowTitle -like '*Settings*' -or $windowTitle -like '*Guidance*' -or
+                     $windowTitle -like '*Orbit Control*' -or $windowTitle -like '*设置*')) {
                     $script:foundWindow = $hwnd
                     return $false
                 }

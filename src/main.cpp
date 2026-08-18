@@ -61,7 +61,7 @@ constexpr int kIdSite = 501;
 constexpr int kIdOrbit = 502;
 constexpr int kIdPlayback = 503;
 constexpr int kIdPlotFirst = 510;
-constexpr int kFieldCount = 18;
+constexpr int kFieldCount = 24;
 
 constexpr double kRecommendedSatelliteMassMinKg = 20.0;
 constexpr double kRecommendedSatelliteMassMaxKg = 2000.0;
@@ -239,7 +239,7 @@ public:
         if (!missions_.loaded()) {
             const std::wstring message = L"无法读取六组火箭任务数据。\nUnable to load the six rocket mission datasets.\n\n"
                 + std::wstring(loadError.begin(), loadError.end());
-            MessageBoxW(nullptr, message.c_str(), L"AeroGNC Lab v3.1", MB_OK | MB_ICONERROR);
+            MessageBoxW(nullptr, message.c_str(), L"AeroGNC Lab v3.2", MB_OK | MB_ICONERROR);
             return false;
         }
         selectMission(false);
@@ -255,7 +255,7 @@ public:
         if (!RegisterClassExW(&wc)) return false;
 
         hwnd_ = CreateWindowExW(0, wc.lpszClassName,
-            L"AeroGNC Lab v3.1｜航天器GNC仿真实验平台",
+            L"AeroGNC Lab v3.2｜航天器GNC仿真实验平台",
             WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
             CW_USEDEFAULT, CW_USEDEFAULT, 1580, 970, nullptr, nullptr, instance_, this);
         if (!hwnd_) return false;
@@ -544,7 +544,13 @@ private:
                 L"建议飞轮转速 / Suggested wheel speed: 500–10000 rpm.",
                 L"必须大于 0；物理步长固定 0.02 s / Must be positive; physics step stays 0.02 s.",
                 L"任务相关参数 / Mission-specific parameter.", L"任务相关参数 / Mission-specific parameter.",
-                L"任务相关参数 / Mission-specific parameter.", L"任务相关参数 / Mission-specific parameter."};
+                L"任务相关参数 / Mission-specific parameter.", L"任务相关参数 / Mission-specific parameter.",
+                L"实际初始姿态相对任务参考姿态的滚转偏差 / Initial roll offset from the mission reference attitude.",
+                L"实际初始姿态相对任务参考姿态的俯仰偏差 / Initial pitch offset from the mission reference attitude.",
+                L"实际初始姿态相对任务参考姿态的偏航偏差 / Initial yaw offset from the mission reference attitude.",
+                L"实际初始机体系滚转角速度偏差 / Initial body-frame roll-rate error.",
+                L"实际初始机体系俯仰角速度偏差 / Initial body-frame pitch-rate error.",
+                L"实际初始机体系偏航角速度偏差 / Initial body-frame yaw-rate error."};
         } else {
             tooltipTexts_ = {
                 L"建议实验范围 / Suggested experiment: ±5%.", L"建议实验范围 / Suggested experiment: ±10%.",
@@ -558,7 +564,7 @@ private:
                 L"实际初始机体系角速率误差 / Actual initial body-rate error.",
                 L"实际初始机体系角速率误差 / Actual initial body-rate error.",
                 L"超过标称文件末端将自动进入轨道滑行 / Beyond nominal file end, orbital coast starts automatically.",
-                L"", L"", L"", L""};
+                L"", L"", L"", L"", L"", L"", L"", L"", L"", L""};
         }
         if (!updateControls || !tooltip_) return;
         for (int index = 0; index < kFieldCount; ++index) {
@@ -571,7 +577,10 @@ private:
         }
     }
 
-    int bottomTop(int height) const { return std::max(518, height - 302); }
+    int bottomTop(int height) const {
+        const bool satellite = scenario_ == ScenarioKind::Satellite;
+        return std::max(satellite ? 460 : 518, height - (satellite ? 360 : 302));
+    }
 
     RECT contentRect(int width, int height) const {
         return {22, 160, width - 22, bottomTop(height) - 12};
@@ -688,6 +697,12 @@ private:
                 fields[17] = {L"机动开始 / Slew start (s)", number(c.mission.slewStartSec, 1)};
                 break;
             }
+            fields[18] = {L"初始滚转偏差 / Initial roll error (deg)", number(c.initialErrorDeg.x, 2)};
+            fields[19] = {L"初始俯仰偏差 / Initial pitch error (deg)", number(c.initialErrorDeg.y, 2)};
+            fields[20] = {L"初始偏航偏差 / Initial yaw error (deg)", number(c.initialErrorDeg.z, 2)};
+            fields[21] = {L"初始滚转角速度 / Initial roll rate (deg/s)", number(c.initialRateDegPerSec.x, 3)};
+            fields[22] = {L"初始俯仰角速度 / Initial pitch rate (deg/s)", number(c.initialRateDegPerSec.y, 3)};
+            fields[23] = {L"初始偏航角速度 / Initial yaw rate (deg/s)", number(c.initialRateDegPerSec.z, 3)};
             return fields;
         }
 
@@ -769,6 +784,12 @@ private:
                                                 readField(16, c.mission.slewTargetEulerDeg.z)};
                 c.mission.slewStartSec = readField(17, c.mission.slewStartSec);
             }
+            c.initialErrorDeg = {readField(18, c.initialErrorDeg.x),
+                                 readField(19, c.initialErrorDeg.y),
+                                 readField(20, c.initialErrorDeg.z)};
+            c.initialRateDegPerSec = {readField(21, c.initialRateDegPerSec.x),
+                                      readField(22, c.initialRateDegPerSec.y),
+                                      readField(23, c.initialRateDegPerSec.z)};
         } else {
             auto& c = rocketConfig_;
             c.deviations = {readField(0, c.deviations.massPercent),
@@ -818,7 +839,9 @@ private:
             warning_[6] = readField(6, 0.0) < kRecommendedSatelliteMassMinKg
                        || readField(6, 0.0) > kRecommendedSatelliteMassMaxKg;
             for (int i : {7, 8, 9}) warning_[i] = readField(i, 0.0) < kRecommendedSatelliteInertiaMin
-                                                || readField(i, 0.0) > kRecommendedSatelliteInertiaMax;
+                                                 || readField(i, 0.0) > kRecommendedSatelliteInertiaMax;
+            for (int i : {18, 19, 20}) warning_[i] = std::abs(readField(i, 0.0)) > 45.0;
+            for (int i : {21, 22, 23}) warning_[i] = std::abs(readField(i, 0.0)) > 5.0;
             if (static_cast<gnc::SatelliteObjective>(SendMessageW(objectiveCombo_, CB_GETCURSEL, 0, 0))
                 == gnc::SatelliteObjective::TargetTracking) {
                 if (std::abs(readField(14, 0.0)) > 90.0) invalid_[14] = true;
@@ -1151,7 +1174,7 @@ private:
             const bool ok = gnc::exportCsv(path, scenario_, history());
             MessageBoxW(hwnd_, ok ? L"仿真数据已导出。\nSimulation data exported."
                                   : L"无法写入所选文件。\nUnable to write the selected file.",
-                        L"AeroGNC Lab v3.1", MB_OK | (ok ? MB_ICONINFORMATION : MB_ICONERROR));
+                        L"AeroGNC Lab v3.2", MB_OK | (ok ? MB_ICONINFORMATION : MB_ICONERROR));
         }
     }
 
@@ -1209,7 +1232,7 @@ private:
     void drawHeader(HDC dc, const RECT& client) {
         fillSolid(dc, {0, 0, client.right, 150}, RGB(7, 15, 23));
         line(dc, 0, 149, client.right, 149, kBorder);
-        drawText(dc, L"AeroGNC Lab v3.1｜航天器GNC仿真实验平台",
+        drawText(dc, L"AeroGNC Lab v3.2｜航天器GNC仿真实验平台",
                  {22, 8, 720, 58}, fontLarge_, kText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         const double progress = duration() > 0.0 ? gnc::clamp(sample().time / duration(), 0.0, 1.0) : 0.0;

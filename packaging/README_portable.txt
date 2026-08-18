@@ -1,8 +1,8 @@
-AeroGNC Lab v3.1 | Aerospace GNC Simulation Platform
+AeroGNC Lab v3.2 | Aerospace GNC Simulation Platform
 Windows x64 standalone portable build
 
 How to run / 运行方法
-1. Double-click AeroGNC_Lab_v3.1_Windows_x64.exe.
+1. Double-click AeroGNC_Lab_v3.2_Windows_x64.exe.
 2. Visual Studio, CMake and the Microsoft Visual C++ Redistributable are not required.
 3. The six rocket trajectories and mission summary are embedded in the EXE; no data folder is required.
 
@@ -18,4 +18,3 @@ Security note / 安全提示
 Data export / 数据导出
 - Use Export CSV in the upper-right corner and choose a destination.
 - The application installs no service, makes no registry changes, and does not write mission data beside the EXE.
-

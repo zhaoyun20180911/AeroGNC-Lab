@@ -1,4 +1,4 @@
-# AeroGNC Lab v3.1｜航天器GNC仿真实验平台
+# AeroGNC Lab v3.2｜航天器GNC仿真实验平台
 
 [![Release](https://img.shields.io/github/v/release/zhaoyun20180911/AeroGNC-Lab?label=release)](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases)
 [![Windows build](https://github.com/zhaoyun20180911/AeroGNC-Lab/actions/workflows/windows-build.yml/badge.svg)](https://github.com/zhaoyun20180911/AeroGNC-Lab/actions/workflows/windows-build.yml)
@@ -6,7 +6,7 @@
 ![C++](https://img.shields.io/badge/C%2B%2B-20-00599C)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-AeroGNC Lab v3.1 是使用 C++20 和原生 Win32/GDI 构建的中英双语桌面仿真实验平台，提供卫星姿态与轨道闭环控制、运载火箭轨迹制导、扰动配置、交互式三维技术视图、实时曲线和 CSV 数据导出。
+AeroGNC Lab v3.2 是使用 C++20 和原生 Win32/GDI 构建的中英双语桌面仿真实验平台，提供卫星姿态与轨道闭环控制、运载火箭轨迹制导、扰动配置、交互式三维技术视图、实时曲线和 CSV 数据导出。
 
 This is a bilingual native C++20 Windows desktop simulation platform for satellite attitude/orbit control and launch-vehicle trajectory guidance. It includes interactive 3D technical views, configurable control and disturbance models, real-time plots, and CSV export.
 
@@ -14,18 +14,18 @@ This is a bilingual native C++20 Windows desktop simulation platform for satelli
 
 | 版本 | 适用对象 | 下载与说明 |
 |---|---|---|
-| **Windows x64 免安装封装版（推荐）** | 希望直接体验软件的用户 | [下载封装版](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v3.1.0/AeroGNC_Lab_v3.1_Windows_x64_Portable.zip)；下载并解压后无需安装，双击 EXE 即可运行。 |
-| **可编辑源码版** | 学习、验证和二次开发 | [下载源码版](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v3.1.0/AeroGNC_Lab_v3.1_Source.zip)；需要 Windows、Visual Studio 2022、CMake 和 C++ 开发环境。 |
+| **Windows x64 免安装封装版（推荐）** | 希望直接体验软件的用户 | [下载封装版](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v3.2.0/AeroGNC_Lab_v3.2_Windows_x64_Portable.zip)；下载并解压后无需安装，双击 EXE 即可运行。 |
+| **可编辑源码版** | 学习、验证和二次开发 | [下载源码版](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v3.2.0/AeroGNC_Lab_v3.2_Source.zip)；需要 Windows、Visual Studio 2022、CMake 和 C++ 开发环境。 |
 
 > 封装版面向 Windows 10/11 x64，已静态链接 MSVC 运行库并内嵌七个任务 CSV。当前未使用商业代码签名证书，首次运行时 Windows SmartScreen 可能显示“未知发布者”；请从本仓库 Release 下载并核对其中的 SHA-256。
 
 ## 软件界面 / Interface
 
-![AeroGNC Lab v3.1 主界面总览](docs/images/aerognc-main-overview.png)
+![AeroGNC Lab v3.2 主界面总览](docs/images/aerognc-main-overview.png)
 
 ## 功能设置 / Control and simulation settings
 
-![AeroGNC Lab v3.1 设置功能总览](docs/images/aerognc-settings-overview.png)
+![AeroGNC Lab v3.2 设置功能总览](docs/images/aerognc-settings-overview.png)
 
 ## 源码运行 / Run from source
 
@@ -49,15 +49,16 @@ ctest --test-dir build -C Release --output-on-failure
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\package_portable.ps1
 ```
 
-- `AeroGNC_Lab_v3.1_Windows_x64.exe`：可单独复制到其他 Windows 10/11 x64 电脑运行的单文件版。
-- `AeroGNC_Lab_v3.1_Windows_x64_Portable.zip`：包含同一 EXE、使用说明和 SHA-256 校验值。
+- `AeroGNC_Lab_v3.2_Windows_x64.exe`：可单独复制到其他 Windows 10/11 x64 电脑运行的单文件版。
+- `AeroGNC_Lab_v3.2_Windows_x64_Portable.zip`：包含同一 EXE、使用说明和 SHA-256 校验值。
 
 便携构建使用静态 MSVC 运行库，只依赖 Windows 自带的系统 DLL；七个只读任务 CSV 作为原始字节嵌入 EXE。开发环境仍优先读取项目 `data/rocket_missions/`，外部目录不存在时自动使用内嵌数据。当前文件没有商业代码签名证书，因此陌生电脑首次运行时可能出现 Windows SmartScreen“未知发布者”提示。
 
-## 3.1 功能 / Version 3.1 features
+## 3.2 功能 / Version 3.2 features
 
 - 全部可见参数、选项、按钮、状态与指标采用中英双语。
 - 卫星支持六个经典轨道根数、质量/惯量/飞轮参数，以及对地定向、惯性定向、目标跟踪和姿态机动四种任务。
+- 卫星主界面参数栏可直接编辑三轴初始姿态偏差和三轴初始机体系角速度偏差，六项参数在下一次开始或重置时生效。
 - 火箭仅允许选择 3 个发射场 × 2 个目标轨道，共 6 个合法固定任务；标称质量、推力、比冲、惯量和 TVC 参数只读。
 - 火箭用户输入是 Truth Model 偏差：质量、惯量、推力、比冲、阻力系数、大气密度及 TVC 零偏。
 - 标称轨迹从只读 CSV 插值；位置/速度线性插值，四元数使用符号连续处理与 SLERP。文件结束后标称和实际状态分别进行二体轨道滑行，实际状态不会吸附回标称轨迹。
@@ -72,7 +73,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\package_portab
 - 播放速度固定为 0.25×、0.5×、1×、2×、5×、10×、20×、50×、100× 和最快模式；物理积分步长保持 0.02 s。
 - CSV 导出包含参考/实际状态、误差、控制量、执行机构、任务阶段、轨道滑行标志及爬升跟踪有效标志；卫星 CSV 另含 RTN 位置/速度误差、轨控推力、推进剂、累计 Δv 与脉冲状态。
 
-## v3.1 卫星闭环轨道控制 / Satellite closed-loop orbit control
+## 卫星闭环轨道控制 / Satellite closed-loop orbit control
 
 - 实际轨道和未受扰名义轨道分别采用二体 RK4 传播；轨控器不重新在线规划轨道，而是反馈修正二者的位置、速度偏差。
 - 控制器根据 RTN/LVLH 六状态误差生成 ECI 修正加速度，再转换为本体系三轴推力器指令；卫星姿态任务继续由反作用飞轮独立执行。

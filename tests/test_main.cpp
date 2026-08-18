@@ -236,6 +236,36 @@ int main() {
                 "wheel speed saturation must be enforced");
     });
 
+    test("satellite configurable initial attitude state", [] {
+        SatelliteConfig baselineConfig{};
+        baselineConfig.initialErrorDeg = {7.0, -5.0, 9.0};
+        baselineConfig.initialRateDegPerSec = {};
+        baselineConfig.disturbanceEnabled = false;
+
+        SatelliteConfig configured = baselineConfig;
+        configured.initialRateDegPerSec = {0.12, -0.08, 0.05};
+
+        const SatelliteSimulation baseline(baselineConfig);
+        const SatelliteSimulation simulation(configured);
+        const SimulationSample& initial = simulation.currentSample();
+        const Quaternion expectedOffset = Quaternion::fromEulerZYX(
+            configured.initialErrorDeg.x * kDegToRad,
+            configured.initialErrorDeg.y * kDegToRad,
+            configured.initialErrorDeg.z * kDegToRad);
+        requireNear(attitudeErrorDeg(initial),
+                    quaternionAngularDistance(Quaternion::identity(), expectedOffset) * kRadToDeg,
+                    1.0e-9, "configured initial attitude offset");
+
+        const Vec3 rateDifference = initial.angularRateDegPerSec
+                                  - baseline.currentSample().angularRateDegPerSec;
+        requireNear(rateDifference.x, configured.initialRateDegPerSec.x, 1.0e-12,
+                    "configured initial roll rate");
+        requireNear(rateDifference.y, configured.initialRateDegPerSec.y, 1.0e-12,
+                    "configured initial pitch rate");
+        requireNear(rateDifference.z, configured.initialRateDegPerSec.z, 1.0e-12,
+                    "configured initial yaw rate");
+    });
+
     test("satellite orbit control recovers from translational impulse", [] {
         auto run = [](bool orbitControlEnabled) {
             SatelliteConfig config{};

@@ -262,7 +262,7 @@ class ControlDialog final : public ModalWindow {
 public:
     ControlDialog(HWND owner, ScenarioKind scenario, ControlConfig config,
                   const Vec3& inertia, const Vec3& authority)
-        : ModalWindow(owner, L"AeroGNC Lab v3.1｜姿态控制设置 / Attitude Control Settings", 1080, 650), scenario_(scenario),
+        : ModalWindow(owner, L"AeroGNC Lab v3.2｜姿态控制设置 / Attitude Control Settings", 1080, 650), scenario_(scenario),
           config_(config), inertia_(inertia), authority_(authority) {
         recommendation_ = recommendControlGains(
             scenario == ScenarioKind::Satellite ? ControlVehicle::Satellite : ControlVehicle::LaunchVehicle,
@@ -416,7 +416,7 @@ private:
 class SatelliteOrbitControlDialog final : public ModalWindow {
 public:
     SatelliteOrbitControlDialog(HWND owner, SatelliteOrbitControlConfig config)
-        : ModalWindow(owner, L"AeroGNC Lab v3.1｜卫星轨道控制 / Satellite Orbit Control", 840, 700),
+        : ModalWindow(owner, L"AeroGNC Lab v3.2｜卫星轨道控制 / Satellite Orbit Control", 840, 700),
           config_(config) {}
 
     const SatelliteOrbitControlConfig& result() const { return config_; }
@@ -487,7 +487,7 @@ private:
 class GuidanceDialog final : public ModalWindow {
 public:
     GuidanceDialog(HWND owner, RocketGuidanceConfig config)
-        : ModalWindow(owner, L"AeroGNC Lab v3.1｜火箭轨迹制导 / Rocket Trajectory Guidance", 820, 720),
+        : ModalWindow(owner, L"AeroGNC Lab v3.2｜火箭轨迹制导 / Rocket Trajectory Guidance", 820, 720),
           config_(config) {}
 
     const RocketGuidanceConfig& result() const { return config_; }
@@ -579,7 +579,7 @@ class DisturbanceDialog final : public ModalWindow {
 public:
     DisturbanceDialog(HWND owner, ScenarioKind scenario, SatelliteDisturbanceConfig satellite,
                       RocketDisturbanceConfig rocket)
-        : ModalWindow(owner, L"AeroGNC Lab v3.1｜扰动设置 / Disturbance Settings", 940, 780),
+        : ModalWindow(owner, L"AeroGNC Lab v3.2｜扰动设置 / Disturbance Settings", 940, 780),
           scenario_(scenario), satellite_(satellite), rocket_(rocket) {}
     const SatelliteDisturbanceConfig& satelliteResult() const { return satellite_; }
     const RocketDisturbanceConfig& rocketResult() const { return rocket_; }
@@ -760,7 +760,7 @@ private:
 class PerturbationDialog final : public ModalWindow {
 public:
     PerturbationDialog(HWND owner, PerturbationConfig config)
-        : ModalWindow(owner, L"AeroGNC Lab v3.1｜摄动设置 / Perturbation Settings", 690, 520), config_(config) {}
+        : ModalWindow(owner, L"AeroGNC Lab v3.2｜摄动设置 / Perturbation Settings", 690, 520), config_(config) {}
     const PerturbationConfig& result() const { return config_; }
 
 protected:
