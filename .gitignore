@@ -1,0 +1,27 @@
+# CMake and Visual Studio build output
+/build/
+/build_portable/
+/out/
+/.vs/
+/CMakeFiles/
+/CMakeCache.txt
+/*.sln
+/*.vcxproj*
+/*.user
+/*.suo
+
+# Generated packages and validation captures
+/dist/
+/artifacts/
+
+# Runtime exports and temporary files
+/*_export.csv
+/csv_export_test.csv
+/rocket_csv_export_test.csv
+*.tmp
+*.log
+
+# Operating-system metadata
+Thumbs.db
+.DS_Store
+
