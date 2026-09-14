@@ -2,10 +2,10 @@
 setlocal EnableExtensions
 pushd "%~dp0" || goto :launch_failed
 
-set "APP_EXE=build\Release\AerospaceGNC.exe"
+set "APP_EXE=build\Release\AeroSysLab.exe"
 
 if not exist "%APP_EXE%" (
-    echo [AerospaceGNC] First run: configuring and building Release...
+    echo [AeroSysLab] First run: configuring and building Release...
     where cmake >nul 2>nul
     if errorlevel 1 goto :cmake_missing
     cmake -S . -B build -A x64
@@ -23,11 +23,11 @@ echo CMake was not found. Install Visual Studio C++ and CMake, then try again.
 goto :failed
 
 :build_failed
-echo AerospaceGNC build failed. Review the messages above.
+echo AeroSysLab build failed. Review the messages above.
 goto :failed
 
 :launch_failed
-echo Unable to enter the AerospaceGNC project directory.
+echo Unable to enter the AeroSys Lab project directory.
 
 :failed
 popd 2>nul

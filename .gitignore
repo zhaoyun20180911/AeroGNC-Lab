@@ -18,10 +18,11 @@
 /*_export.csv
 /csv_export_test.csv
 /rocket_csv_export_test.csv
+/recovery_csv_export_test.csv
+/recovery_handoff_test.csv
 *.tmp
 *.log
 
 # Operating-system metadata
 Thumbs.db
 .DS_Store
-

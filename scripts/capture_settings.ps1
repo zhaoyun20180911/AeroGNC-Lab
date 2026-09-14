@@ -1,5 +1,5 @@
 param(
-    [string]$ExecutablePath = (Join-Path $PSScriptRoot '..\build\Release\AerospaceGNC.exe'),
+    [string]$ExecutablePath = (Join-Path $PSScriptRoot '..\build\Release\AeroSysLab.exe'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\artifacts')
 )
 
@@ -33,7 +33,7 @@ function Find-SettingsWindow {
                 $title = New-Object System.Text.StringBuilder 256
                 [void][GncSettingsApi]::GetWindowText($hwnd, $title, $title.Capacity)
                 $windowTitle = $title.ToString()
-                if ($windowTitle -like 'AeroGNC Lab v*' -and
+                if ($windowTitle -like 'AeroSys Lab v*' -and
                     ($windowTitle -like '*Settings*' -or $windowTitle -like '*Guidance*' -or
                      $windowTitle -like '*Orbit Control*' -or $windowTitle -like '*设置*')) {
                     $script:foundWindow = $hwnd

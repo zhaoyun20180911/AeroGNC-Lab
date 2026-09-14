@@ -12,8 +12,8 @@ IDR_CAPE_300        RCDATA "../data/rocket_missions/cape_300km_28p5deg.csv"
 IDR_CAPE_500        RCDATA "../data/rocket_missions/cape_500km_51p6deg.csv"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,2,0,0
- PRODUCTVERSION 3,2,0,0
+ FILEVERSION 4,1,0,0
+ PRODUCTVERSION 4,1,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -28,13 +28,13 @@ BEGIN
     BEGIN
         BLOCK "080404B0"
         BEGIN
-            VALUE "CompanyName", "AeroGNC Lab\0"
-            VALUE "FileDescription", "AeroGNC Lab v3.2 - Aerospace GNC Simulation Platform\0"
-            VALUE "FileVersion", "3.2.0.0\0"
-            VALUE "InternalName", "AeroGNC_Lab_v3.2\0"
-            VALUE "OriginalFilename", "AeroGNC_Lab_v3.2_Windows_x64.exe\0"
-            VALUE "ProductName", "AeroGNC Lab v3.2｜航天器GNC仿真实验平台\0"
-            VALUE "ProductVersion", "3.2.0.0\0"
+            VALUE "CompanyName", "AeroSys Lab\0"
+            VALUE "FileDescription", "AeroSys Lab v4.1 - Aerospace Systems Simulation Platform\0"
+            VALUE "FileVersion", "4.1.0.0\0"
+            VALUE "InternalName", "AeroSysLab\0"
+            VALUE "OriginalFilename", "AeroSysLab.exe\0"
+            VALUE "ProductName", "AeroSys Lab v4.1｜航天系统综合仿真平台\0"
+            VALUE "ProductVersion", "4.1.0.0\0"
         END
     END
     BLOCK "VarFileInfo"

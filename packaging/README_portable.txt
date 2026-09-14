@@ -1,10 +1,11 @@
-AeroGNC Lab v3.2 | Aerospace GNC Simulation Platform
+AeroSys Lab v4.1 | 航天系统综合仿真平台
 Windows x64 standalone portable build
 
 How to run / 运行方法
-1. Double-click AeroGNC_Lab_v3.2_Windows_x64.exe.
+1. Double-click AeroSys_Lab_v4.1_Windows_x64.exe.
 2. Visual Studio, CMake and the Microsoft Visual C++ Redistributable are not required.
-3. The six rocket trajectories and mission summary are embedded in the EXE; no data folder is required.
+3. Satellite GNC, launch-to-orbit GNC and first-stage RTLS recovery are included.
+4. The six launch trajectories and mission summary are embedded in the EXE; no data folder is required.
 
 System requirements / 系统要求
 - Windows 10 or Windows 11 on an x86-64 processor.

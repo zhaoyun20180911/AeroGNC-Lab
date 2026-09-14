@@ -1,117 +1,59 @@
-# AeroGNC Lab v3.2｜航天器GNC仿真实验平台
+# AeroSys Lab v4.1｜航天系统综合仿真平台
 
-[![Release](https://img.shields.io/github/v/release/zhaoyun20180911/AeroGNC-Lab?label=release)](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases)
-[![Windows build](https://github.com/zhaoyun20180911/AeroGNC-Lab/actions/workflows/windows-build.yml/badge.svg)](https://github.com/zhaoyun20180911/AeroGNC-Lab/actions/workflows/windows-build.yml)
-![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D4)
-![C++](https://img.shields.io/badge/C%2B%2B-20-00599C)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+AeroSys Lab 是使用 C++20 与原生 Win32/GDI 构建的 GNC 与动力学仿真平台。v4.1 采用白底深色文字界面，顶部“中文 / English”开关可在中文单语与英文单语之间即时切换，所有按钮、参数、下拉项、曲线、指标、提示和设置弹窗随模式同步刷新。软件包含三个彼此并列的顶层模块：
 
-AeroGNC Lab v3.2 是使用 C++20 和原生 Win32/GDI 构建的中英双语桌面仿真实验平台，提供卫星姿态与轨道闭环控制、运载火箭轨迹制导、扰动配置、交互式三维技术视图、实时曲线和 CSV 数据导出。
+- **卫星姿轨控**：四类姿态任务、PD/PID/LQR、反作用飞轮、轨道保持、摄动与扰动仿真；
+- **火箭上升入轨**：六组只读标称任务、闭环轨迹制导、两级动力学、TVC/RCS 和入轨指标；
+- **火箭一级回收**：从一级分离状态开始的 RTLS 返回发射场闭环仿真。
 
-This is a bilingual native C++20 Windows desktop simulation platform for satellite attitude/orbit control and launch-vehicle trajectory guidance. It includes interactive 3D technical views, configurable control and disturbance models, real-time plots, and CSV export.
+## 直接运行
 
-## 下载 / Downloads
+双击根目录中的 `运行 AeroSysLab.bat`。脚本会启动现有的 `build/Release/AeroSysLab.exe`；若文件不存在，则先配置并编译 Release 版本。
 
-| 版本 | 适用对象 | 下载与说明 |
-|---|---|---|
-| **Windows x64 免安装封装版（推荐）** | 希望直接体验软件的用户 | [下载封装版](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v3.2.0/AeroGNC_Lab_v3.2_Windows_x64_Portable.zip)；下载并解压后无需安装，双击 EXE 即可运行。 |
-| **可编辑源码版** | 学习、验证和二次开发 | [下载源码版](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v3.2.0/AeroGNC_Lab_v3.2_Source.zip)；需要 Windows、Visual Studio 2022、CMake 和 C++ 开发环境。 |
-
-> 封装版面向 Windows 10/11 x64，已静态链接 MSVC 运行库并内嵌七个任务 CSV。当前未使用商业代码签名证书，首次运行时 Windows SmartScreen 可能显示“未知发布者”；请从本仓库 Release 下载并核对其中的 SHA-256。
-
-## 软件界面 / Interface
-
-![AeroGNC Lab v3.2 主界面总览](docs/images/aerognc-main-overview.png)
-
-## 功能设置 / Control and simulation settings
-
-![AeroGNC Lab v3.2 设置功能总览](docs/images/aerognc-settings-overview.png)
-
-## 源码运行 / Run from source
-
-双击项目根目录中的 `运行 AerospaceGNC.bat`。脚本优先启动已经编译好的 `build/Release/AerospaceGNC.exe`；如果可执行文件不存在，会先调用本机的 CMake 与 Visual Studio 2022 重新构建。
-
-Double-click `运行 AerospaceGNC.bat`. It launches the existing Release executable, or builds it first when needed.
-
-重新编译并执行测试可双击 `构建并测试.bat`，也可以运行：
+也可在 PowerShell 中执行：
 
 ```powershell
 cmake -S . -B build -A x64
 cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
+./build/Release/AeroSysLab.exe
 ```
 
-## 免安装便携版 / Standalone portable build
+依赖 Windows 10/11、CMake 3.24+、Visual Studio 2022 C++ 工具链。Release 使用静态 MSVC 运行库。
 
-双击 `生成便携版.bat` 可重新构建并在 `dist/` 生成。命令行方式为：
+## 火箭一级回收工作流
+
+启动软件后选择“火箭一级回收”（英文模式为“First-Stage Recovery”）。默认配置从约 80 km 一级分离状态开始，可直接运行完整链路：
+
+```text
+分离 → 翻转 → 返场点火 → 滑行 → 再入点火
+     → 栅格舵气动下降 → 在线凸优化着陆 → TOUCHDOWN
+```
+
+默认分离状态为着陆场 NED 坐标下北向 20 km、高度 80 km、北向速度 600 m/s、向下速度 −150 m/s（仍在上升），一级总质量 90 t、可用回收推进剂 62 t，并采用 2.28 MN 等效发动机组。页面实时显示当前阶段、实际轨迹、目标着陆点、预测落点、位置/速度、质量与推进剂、推力、TVC、四片栅格舵和 QP 求解性能。下方参数区可直接修改分离 NED 状态、着陆场、车辆、风/大气、制导频率、动态点火余量和优化器参数；“恢复默认”可返回可直接演示的标称 RTLS 工况。
+
+回收模块使用 ECEF 保存全局位置/速度，以着陆点 NED 进行局部制导，以四元数传播姿态。Landing 阶段采用滚动时域在线凸 QP，每个制导周期只执行当前解的第一个控制量，随后利用新状态重新建模求解。求解异常或超时会切换安全启发式控制并保留状态记录。
+
+## 数据与测试
+
+- 右上角 **导出 CSV** 可导出当前模块遥测；回收 CSV 包含阶段、ECEF/NED 状态、预测落点、执行机构和优化器字段。
+- `gnc_tests` 覆盖原卫星与上升入轨模块；`recovery_tests` 覆盖标称、位置误差、速度误差、推力偏差、大气/风、组合扰动六组工况。
+- 六组回收工况均须经历完整阶段序列并通过安全着陆门槛，测试同时检查坐标变换、分离状态交接、栅格舵修正、执行机构限幅、求解周期和 CSV。
+
+运行全部测试：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\package_portable.ps1
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-- `AeroGNC_Lab_v3.2_Windows_x64.exe`：可单独复制到其他 Windows 10/11 x64 电脑运行的单文件版。
-- `AeroGNC_Lab_v3.2_Windows_x64_Portable.zip`：包含同一 EXE、使用说明和 SHA-256 校验值。
+## 工程说明
 
-便携构建使用静态 MSVC 运行库，只依赖 Windows 自带的系统 DLL；七个只读任务 CSV 作为原始字节嵌入 EXE。开发环境仍优先读取项目 `data/rocket_missions/`，外部目录不存在时自动使用内嵌数据。当前文件没有商业代码签名证书，因此陌生电脑首次运行时可能出现 Windows SmartScreen“未知发布者”提示。
+- [软件架构](docs/architecture.md)
+- [卫星模型](docs/satellite_model.md)
+- [火箭上升与任务数据](docs/rocket_model.md)
+- [控制、轨控与扰动](docs/control_and_disturbance.md)
+- [一级回收 V1 实现报告](AeroSys_Lab_Recovery_V1_Implementation_Report.md)
 
-## 3.2 功能 / Version 3.2 features
+一级回收 V1 是 Falcon-9-like 教学与工程仿真，不是 SpaceX 飞控复刻，也不使用或声称使用真实私有参数。当前版本采用真值导航、参数化气动、等效发动机组和局部平动近似，接口已为后续传感器/EKF、高保真环境、查表气动和外部 QP 求解器预留。
 
-- 全部可见参数、选项、按钮、状态与指标采用中英双语。
-- 卫星支持六个经典轨道根数、质量/惯量/飞轮参数，以及对地定向、惯性定向、目标跟踪和姿态机动四种任务。
-- 卫星主界面参数栏可直接编辑三轴初始姿态偏差和三轴初始机体系角速度偏差，六项参数在下一次开始或重置时生效。
-- 火箭仅允许选择 3 个发射场 × 2 个目标轨道，共 6 个合法固定任务；标称质量、推力、比冲、惯量和 TVC 参数只读。
-- 火箭用户输入是 Truth Model 偏差：质量、惯量、推力、比冲、阻力系数、大气密度及 TVC 零偏。
-- 标称轨迹从只读 CSV 插值；位置/速度线性插值，四元数使用符号连续处理与 SLERP。文件结束后标称和实际状态分别进行二体轨道滑行，实际状态不会吸附回标称轨迹。
-- 场景选择和功能设置分为上下两行；“卫星 / Satellite”“运载火箭 / Launch Vehicle”位于上层，“姿态控制 / Attitude Control”等当前场景功能位于下层。
-- 姿态控制设置支持关闭、默认和自定义；自定义可选 PD、带抗积分饱和的 PID 或 LQR 状态反馈，并根据惯量和执行机构能力给出动态推荐值。
-- 卫星新增位置/速度六状态轨道控制外环与三轴微推力器组，独立传播名义轨道和实际轨道，并计入推力限幅、推进剂消耗、比冲和耗尽强制停机。
-- 卫星扰动可组合恒定、脉冲、正弦和随机力矩，并可注入一次性 RTN/LVLH 轨道 Δv 脉冲；火箭扰动可组合稳态侧风、阵风、脉冲力、脉冲力矩和随机扰动。
-- 卫星摄动设置保留 J2、大气阻力、月球/太阳三体引力和太阳光压占位项，全部明确标注“未启用 / Not enabled”，不进入当前动力学。
-- 状态驱动的交互 3D 技术视图支持左键旋转、滚轮缩放、右键平移、双击复位与相机预设；卫星实轨按统一物理比例绘制，半长轴和偏心率会改变地球/轨道相对尺寸及轨道形状。
-- 火箭提供局部上升与地心全球轨道两种视图，入轨后自动切换到全球视图，连续展示上升、入轨点、目标轨道和入轨后滑行轨迹。
-- 火箭爬升跟踪误差在入轨时冻结，滑行段只继续传播原始状态和实际轨道量；实时图采用 1/2/5 友好刻度、明确零刻度线及按物理含义约束的纵轴范围。
-- 播放速度固定为 0.25×、0.5×、1×、2×、5×、10×、20×、50×、100× 和最快模式；物理积分步长保持 0.02 s。
-- CSV 导出包含参考/实际状态、误差、控制量、执行机构、任务阶段、轨道滑行标志及爬升跟踪有效标志；卫星 CSV 另含 RTN 位置/速度误差、轨控推力、推进剂、累计 Δv 与脉冲状态。
-
-## 卫星闭环轨道控制 / Satellite closed-loop orbit control
-
-- 实际轨道和未受扰名义轨道分别采用二体 RK4 传播；轨控器不重新在线规划轨道，而是反馈修正二者的位置、速度偏差。
-- 控制器根据 RTN/LVLH 六状态误差生成 ECI 修正加速度，再转换为本体系三轴推力器指令；卫星姿态任务继续由反作用飞轮独立执行。
-- “轨道控制 / Orbit Control”窗口可设置位置/速度增益、合推力上限、比冲、初始推进剂和位置/速度死区。
-- 主界面提供轨道位置/速度误差、径向/航向/法向误差、轨控推力、推进剂、累计 Δv、比能量及轨道根数误差曲线，并在三维视图同时标出名义位置和实际位置。
-- 自动测试验证一次 0.20 m/s 航向脉冲后，闭环在 1200 s 时将位置误差从开环约 251.5 m 降至约 0.21 m。
-
-## 火箭闭环轨迹制导 / Rocket closed-loop trajectory guidance
-
-- 火箭现在采用“位置/速度轨迹制导外环 → 姿态控制内环 → TVC/RCS 执行机构”的串级结构；PD、PID、LQR 仍负责姿态内环，不进行在线轨迹优化。
-- 每一级推进剂独立记账。推进剂耗尽即强制关机，级间分离会丢弃一级干质量和一级残余推进剂，不再允许发动机在干质量下限继续产生推力。
-- 二级末段提供目标轨道比能量制导、自适应关机与有限补燃，以处理推力和比冲等真值偏差；修正角和指令变化率均有限幅。
-- 主界面新增“轨迹制导 / Guidance”设置、制导状态、剩余推进剂，以及径向/航向误差、制导修正角、推进剂余量和轨道比能量误差曲线；CSV 同步导出这些量。
-- 入轨快照以发动机实际关机为准，终端轨道根数相对固定目标轨道计算；入轨后不再继续累计爬升轨迹误差。
-
-- The launch vehicle now uses a cascaded position/velocity guidance outer loop, attitude-control inner loop, and TVC/RCS actuators. It tracks the loaded nominal trajectory rather than solving a new trajectory online.
-- Propellant is tracked independently per stage, with mandatory cutoff at depletion and physically consistent stage separation.
-- Terminal specific-energy guidance supports adaptive cutoff and bounded burn extension under truth-model deviations.
-
-## 任务数据 / Mission data
-
-七个原始 CSV 位于 `data/rocket_missions/`。它们是运行时只读输入，构建后会原样复制到可执行文件旁的 `data/rocket_missions/`。程序不会重新生成或覆盖这些文件。映射和字段说明见 `docs/mission_data.md`。
-
-## 工程说明 / Engineering notes
-
-- 架构：[docs/architecture.md](docs/architecture.md)
-- 坐标与单位：[docs/conventions.md](docs/conventions.md)
-- 火箭模型：[docs/rocket_model.md](docs/rocket_model.md)
-- 卫星模型：[docs/satellite_model.md](docs/satellite_model.md)
-- 控制与扰动：[docs/control_and_disturbance.md](docs/control_and_disturbance.md)
-- 验证记录：[docs/validation.md](docs/validation.md)
-
-## 使用范围与免责声明 / Scope and disclaimer
-
-本项目用于教学、科研演示、控制算法理解和软件仿真实验。模型包含明确的工程简化，不是经过飞行鉴定的任务分析或控制软件，不得用于真实航天器、运载火箭、安全关键系统或任何需要适航/飞行认证的决策。
-
-This project is intended for education, research demonstrations, control-algorithm study, and software simulation. It is not flight-qualified and must not be used for real spacecraft, launch vehicles, safety-critical systems, or certified mission decisions.
-
-## 许可证 / License
-
-源代码采用 [MIT License](LICENSE) 发布。七个任务数据随项目提供，用于运行、验证和复现实验。
+许可证见 [LICENSE](LICENSE)。

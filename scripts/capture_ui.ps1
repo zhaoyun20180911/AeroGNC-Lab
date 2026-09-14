@@ -1,5 +1,5 @@
 param(
-    [string]$ExecutablePath = (Join-Path $PSScriptRoot '..\build\Release\AerospaceGNC.exe'),
+    [string]$ExecutablePath = (Join-Path $PSScriptRoot '..\build\Release\AeroSysLab.exe'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\artifacts')
 )
 

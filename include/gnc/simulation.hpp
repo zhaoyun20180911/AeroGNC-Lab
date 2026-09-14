@@ -5,13 +5,14 @@
 #include "gnc/control.hpp"
 #include "gnc/mission.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 namespace gnc {
 
-enum class ScenarioKind { Satellite, Rocket };
+enum class ScenarioKind { Satellite, Rocket, Recovery };
 enum class RunState { Ready, Running, Paused, Completed };
 
 struct SimulationSample {
@@ -68,6 +69,23 @@ struct SimulationSample {
     bool engineCutoff{};
     bool translationalImpulseApplied{};
     bool orbitControlSaturated{};
+
+    Vec3 positionNed{};
+    Vec3 velocityNed{};
+    Vec3 predictedLandingErrorNed{};
+    std::array<double, 4> gridFinDeflectionDeg{};
+    double groundDistance{};
+    double horizontalVelocity{};
+    double verticalVelocity{};
+    double landingError{};
+    double brakingDistance{};
+    double optimizerSolveTimeMs{};
+    double optimizerSuccessRate{};
+    double touchdownTiltDeg{};
+    int recoveryPhase{};
+    int optimizerStatus{};
+    bool optimizerFallback{};
+    bool recoveryFailed{};
 };
 
 struct PerformanceMetrics {

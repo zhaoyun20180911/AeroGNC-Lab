@@ -1,4 +1,5 @@
 #include "gnc/settings_dialogs.hpp"
+#include "gnc/localization.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,11 +11,11 @@
 namespace gnc::gui {
 namespace {
 
-constexpr COLORREF kDialogBackground = RGB(9, 18, 28);
-constexpr COLORREF kDialogPanel = RGB(15, 29, 42);
-constexpr COLORREF kDialogText = RGB(228, 237, 242);
-constexpr COLORREF kDialogMuted = RGB(132, 155, 169);
-constexpr COLORREF kDialogAccent = RGB(48, 213, 176);
+constexpr COLORREF kDialogBackground = RGB(248, 250, 251);
+constexpr COLORREF kDialogPanel = RGB(255, 255, 255);
+constexpr COLORREF kDialogText = RGB(27, 38, 45);
+constexpr COLORREF kDialogMuted = RGB(91, 108, 118);
+constexpr COLORREF kDialogAccent = RGB(0, 132, 110);
 
 constexpr int kApplyId = 9001;
 constexpr int kCancelId = 9002;
@@ -51,7 +52,7 @@ void setComponent(Vec3& value, int axis, double number) {
 class ModalWindow {
 public:
     ModalWindow(HWND owner, const wchar_t* title, int width, int height)
-        : owner_(owner), title_(title), width_(width), height_(height) {}
+        : owner_(owner), title_(localizeBilingual(title)), width_(width), height_(height) {}
 
     virtual ~ModalWindow() {
         if (font_) DeleteObject(font_);
@@ -68,7 +69,7 @@ public:
         const int ownerHeight = static_cast<int>(ownerRect.bottom - ownerRect.top);
         const int x = static_cast<int>(ownerRect.left) + std::max(0, (ownerWidth - width_) / 2);
         const int y = static_cast<int>(ownerRect.top) + std::max(0, (ownerHeight - height_) / 2);
-        hwnd_ = CreateWindowExW(WS_EX_DLGMODALFRAME, className(), title_,
+        hwnd_ = CreateWindowExW(WS_EX_DLGMODALFRAME, className(), title_.c_str(),
             WS_POPUP | WS_CAPTION | WS_SYSMENU, x, y, width_, height_, owner_, nullptr,
             GetModuleHandleW(nullptr), this);
         if (!hwnd_) return false;
@@ -94,7 +95,8 @@ protected:
 
     HWND label(const std::wstring& value, int x, int y, int width, int height = 22,
                bool muted = false) {
-        HWND control = CreateWindowExW(0, L"STATIC", value.c_str(), WS_CHILD | WS_VISIBLE,
+        const std::wstring localized = localizeBilingual(value);
+        HWND control = CreateWindowExW(0, L"STATIC", localized.c_str(), WS_CHILD | WS_VISIBLE,
             x, y, width, height, hwnd_, nullptr, GetModuleHandleW(nullptr), nullptr);
         SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(muted ? smallFont_ : font_), TRUE);
         return control;
@@ -113,7 +115,8 @@ protected:
                   bool radio = false) {
         const DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP
             | (radio ? BS_AUTORADIOBUTTON : BS_AUTOCHECKBOX);
-        HWND control = CreateWindowExW(0, L"BUTTON", value.c_str(), style,
+        const std::wstring localized = localizeBilingual(value);
+        HWND control = CreateWindowExW(0, L"BUTTON", localized.c_str(), style,
             x, y, width, 25, hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
             GetModuleHandleW(nullptr), nullptr);
         SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(font_), TRUE);
@@ -122,7 +125,8 @@ protected:
     }
 
     HWND button(const std::wstring& value, int x, int y, int width, int id) {
-        HWND control = CreateWindowExW(0, L"BUTTON", value.c_str(),
+        const std::wstring localized = localizeBilingual(value);
+        HWND control = CreateWindowExW(0, L"BUTTON", localized.c_str(),
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
             x, y, width, 32, hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
             GetModuleHandleW(nullptr), nullptr);
@@ -137,7 +141,8 @@ protected:
             GetModuleHandleW(nullptr), nullptr);
         SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(font_), TRUE);
         for (const wchar_t* item : {L"X 轴 / X axis", L"Y 轴 / Y axis", L"Z 轴 / Z axis"}) {
-            SendMessageW(control, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item));
+            const std::wstring localized = localizeBilingual(item);
+            SendMessageW(control, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(localized.c_str()));
         }
         SendMessageW(control, CB_SETCURSEL, selection, 0);
         return control;
@@ -170,7 +175,7 @@ protected:
     bool accepted_{};
 
 private:
-    static const wchar_t* className() { return L"AerospaceGNCSettingsWindow"; }
+    static const wchar_t* className() { return L"AeroSysLabSettingsWindow"; }
 
     static void registerClass() {
         static bool registered = false;
@@ -203,7 +208,7 @@ private:
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
                 DEFAULT_PITCH, L"Segoe UI");
             dialog->brush_ = CreateSolidBrush(kDialogBackground);
-            dialog->editBrush_ = CreateSolidBrush(RGB(12, 25, 37));
+            dialog->editBrush_ = CreateSolidBrush(RGB(255, 255, 255));
             dialog->build();
             return 0;
         case WM_COMMAND: {
@@ -230,7 +235,7 @@ private:
         case WM_CTLCOLORLISTBOX: {
             HDC dc = reinterpret_cast<HDC>(wParam);
             SetTextColor(dc, kDialogText);
-            SetBkColor(dc, RGB(12, 25, 37));
+            SetBkColor(dc, RGB(255, 255, 255));
             return reinterpret_cast<LRESULT>(dialog->editBrush_);
         }
         case WM_ERASEBKGND:
@@ -241,7 +246,7 @@ private:
             RECT client{};
             GetClientRect(hwnd, &client);
             FillRect(dc, &client, dialog->brush_);
-            HPEN pen = CreatePen(PS_SOLID, 1, RGB(34, 54, 70));
+            HPEN pen = CreatePen(PS_SOLID, 1, RGB(205, 216, 223));
             const HGDIOBJ old = SelectObject(dc, pen);
             MoveToEx(dc, 20, 58, nullptr); LineTo(dc, client.right - 20, 58);
             SelectObject(dc, old); DeleteObject(pen);
@@ -255,14 +260,14 @@ private:
         return DefWindowProcW(hwnd, message, wParam, lParam);
     }
 
-    const wchar_t* title_{};
+    std::wstring title_{};
 };
 
 class ControlDialog final : public ModalWindow {
 public:
     ControlDialog(HWND owner, ScenarioKind scenario, ControlConfig config,
                   const Vec3& inertia, const Vec3& authority)
-        : ModalWindow(owner, L"AeroGNC Lab v3.2｜姿态控制设置 / Attitude Control Settings", 1080, 650), scenario_(scenario),
+        : ModalWindow(owner, L"AeroSys Lab v4.1｜姿态控制设置 / Attitude Control Settings", 1080, 650), scenario_(scenario),
           config_(config), inertia_(inertia), authority_(authority) {
         recommendation_ = recommendControlGains(
             scenario == ScenarioKind::Satellite ? ControlVehicle::Satellite : ControlVehicle::LaunchVehicle,
@@ -275,7 +280,8 @@ protected:
     void build() override {
         label(L"姿态控制设置 / ATTITUDE CONTROL SETTINGS", 22, 16, 520, 28);
         label(scenario_ == ScenarioKind::Satellite ? L"卫星姿态控制 / Satellite attitude control"
-                                                   : L"火箭姿态控制 / Launch vehicle attitude control",
+              : (scenario_ == ScenarioKind::Recovery ? L"一级回收姿态控制 / Recovery attitude control"
+                                                     : L"火箭姿态控制 / Launch vehicle attitude control"),
               720, 18, 320, 24, true);
         mode_[0] = checkbox(L"不施加控制 / Control OFF", 28, 74, 220, 101,
                             config_.mode == ControlMode::Off, true);
@@ -306,7 +312,8 @@ protected:
                                              187 + row * 48, 130, 200 + row * 3 + axis);
             }
         }
-        defaultHint_ = label(L"默认模式自动采用当前推荐增益。\r\nDefault mode automatically uses the current recommended gains.\r\n\r\n选择“自定义配置”后可编辑 PD、PID 或 LQR 参数。\r\nSelect Custom to edit PD, PID, or LQR parameters.",
+        defaultHint_ = label(tr(L"默认模式自动采用当前推荐增益。\r\n\r\n选择“自定义配置”后可编辑 PD、PID 或 LQR 参数。",
+                                L"Default mode automatically uses the current recommended gains.\r\n\r\nSelect Custom to edit PD, PID, or LQR parameters."),
                              28, 195, 410, 115, true);
 
         lqrLabels_[0] = label(L"姿态误差权重 / Attitude error weight", 28, 397, 285, 25);
@@ -386,14 +393,14 @@ private:
 
     void refreshRecommendationText() {
         std::wostringstream stream;
-        stream << L"当前飞行器推荐 / Current recommendation\r\n\r\n"
+        stream << tr(L"当前飞行器推荐", L"Current recommendation") << L"\r\n\r\n"
                << L"Kp  " << numberText(recommendation_.proportionalGain.x, 4) << L"  /  "
                << numberText(recommendation_.proportionalGain.y, 4) << L"  /  "
                << numberText(recommendation_.proportionalGain.z, 4) << L"\r\n"
                << L"Kd  " << numberText(recommendation_.derivativeGain.x, 4) << L"  /  "
                << numberText(recommendation_.derivativeGain.y, 4) << L"  /  "
                << numberText(recommendation_.derivativeGain.z, 4) << L"\r\n\r\n"
-               << L"根据惯量和执行机构能力计算\r\nCalculated from inertia and actuator authority";
+               << tr(L"根据惯量和执行机构能力计算", L"Calculated from inertia and actuator authority");
         SetWindowTextW(recommendationLabel_, stream.str().c_str());
     }
 
@@ -416,7 +423,7 @@ private:
 class SatelliteOrbitControlDialog final : public ModalWindow {
 public:
     SatelliteOrbitControlDialog(HWND owner, SatelliteOrbitControlConfig config)
-        : ModalWindow(owner, L"AeroGNC Lab v3.2｜卫星轨道控制 / Satellite Orbit Control", 840, 700),
+        : ModalWindow(owner, L"AeroSys Lab v4.1｜卫星轨道控制 / Satellite Orbit Control", 840, 700),
           config_(config) {}
 
     const SatelliteOrbitControlConfig& result() const { return config_; }
@@ -444,11 +451,11 @@ protected:
             labels_[index] = label(names[index], 48, 154 + index * 50, 470, 24);
             edits_[index] = edit(values[index], 535, 151 + index * 50, 200, 820 + index);
         }
-        label(L"控制器在 RTN/LVLH 误差基础上生成 ECI 修正力，再转换为本体系三轴推力器指令。\r\n"
-              L"The controller generates an ECI correction force from RTN/LVLH errors and allocates it in body axes.",
+        label(tr(L"控制器在 RTN/LVLH 误差基础上生成 ECI 修正力，再转换为本体系三轴推力器指令。",
+                 L"The controller generates an ECI correction force from RTN/LVLH errors and allocates it in body axes."),
               28, 518, 780, 48, true);
-        label(L"推进剂耗尽后强制停止轨控；所有参数在下一次开始或重置时生效。\r\n"
-              L"Orbit-control thrust stops at propellant depletion; settings apply on the next Start or Reset.",
+        label(tr(L"推进剂耗尽后强制停止轨控；所有参数在下一次开始或重置时生效。",
+                 L"Orbit-control thrust stops at propellant depletion; settings apply on the next Start or Reset."),
               28, 572, 780, 44, true);
         standardButtons(620);
         updateEnabledState();
@@ -487,7 +494,7 @@ private:
 class GuidanceDialog final : public ModalWindow {
 public:
     GuidanceDialog(HWND owner, RocketGuidanceConfig config)
-        : ModalWindow(owner, L"AeroGNC Lab v3.2｜火箭轨迹制导 / Rocket Trajectory Guidance", 820, 720),
+        : ModalWindow(owner, L"AeroSys Lab v4.1｜火箭轨迹制导 / Rocket Trajectory Guidance", 820, 720),
           config_(config) {}
 
     const RocketGuidanceConfig& result() const { return config_; }
@@ -523,8 +530,8 @@ protected:
         edits_[5] = edit(config_.specificEnergyToleranceJPerKg, 500, 466, 190, 725);
         labels_[6] = label(L"最大补燃时间 / Maximum burn extension (s)", 60, 513, 430, 24);
         edits_[6] = edit(config_.maxBurnExtensionSec, 500, 510, 190, 726);
-        label(L"说明 / Note: 本功能跟踪现有名义轨迹，不进行在线轨迹优化。推进剂耗尽后发动机必然关机。\r\n"
-              L"Tracks the loaded nominal trajectory; it is not an online optimizer. Engine cutoff is mandatory at propellant depletion.",
+        label(tr(L"说明：本功能跟踪现有名义轨迹，不进行在线轨迹优化。推进剂耗尽后发动机必然关机。",
+                 L"Note: Tracks the loaded nominal trajectory; it is not an online optimizer. Engine cutoff is mandatory at propellant depletion."),
               28, 558, 750, 48, true);
         standardButtons(630);
         updateEnabledState();
@@ -579,7 +586,7 @@ class DisturbanceDialog final : public ModalWindow {
 public:
     DisturbanceDialog(HWND owner, ScenarioKind scenario, SatelliteDisturbanceConfig satellite,
                       RocketDisturbanceConfig rocket)
-        : ModalWindow(owner, L"AeroGNC Lab v3.2｜扰动设置 / Disturbance Settings", 940, 780),
+        : ModalWindow(owner, L"AeroSys Lab v4.1｜扰动设置 / Disturbance Settings", 940, 780),
           scenario_(scenario), satellite_(satellite), rocket_(rocket) {}
     const SatelliteDisturbanceConfig& satelliteResult() const { return satellite_; }
     const RocketDisturbanceConfig& rocketResult() const { return rocket_; }
@@ -642,11 +649,11 @@ private:
         edits_[13] = edit(satellite_.deltaVImpulseRtnMps.y, 440, 482, 130, 444);
         edits_[14] = edit(satellite_.deltaVImpulseRtnMps.z, 580, 482, 130, 445);
         edits_[15] = edit(satellite_.deltaVImpulseTimeSec, 720, 482, 130, 446);
-        label(L"Δv 分量采用瞬时 RTN/LVLH 坐标系，单位 m/s；每次仿真只施加一次。\r\n"
-              L"Δv components use the instantaneous RTN/LVLH frame in m/s and are applied once per run.",
+        label(tr(L"Δv 分量采用瞬时 RTN/LVLH 坐标系，单位 m/s；每次仿真只施加一次。",
+                 L"Δv components use the instantaneous RTN/LVLH frame in m/s and are applied once per run."),
               28, 535, 850, 48, true);
-        label(L"多项可同时启用；参数在下一次 Start/Reset 时进入动力学。\r\n"
-              L"Multiple items may be active; values enter dynamics on the next Start/Reset.",
+        label(tr(L"多项可同时启用；参数在下一次开始或重置时进入动力学。",
+                 L"Multiple items may be active; values enter dynamics on the next Start/Reset."),
               28, 590, 850, 45, true);
     }
 
@@ -716,8 +723,8 @@ private:
         edits_[13] = edit(rocket_.randomTorqueRmsNm, 440, 430, 120, 491);
         edits_[14] = edit(rocket_.randomUpdateIntervalSec, 580, 430, 120, 492);
         edits_[15] = edit(static_cast<double>(rocket_.randomSeed), 720, 430, 120, 493);
-        label(L"质量、推力、Isp 等模型偏差不属于扰动，在主页面设置。\r\n"
-              L"Mass, thrust and Isp deviations belong to the truth model on the main page.",
+        label(tr(L"质量、推力、Isp 等模型偏差不属于扰动，在主页面设置。",
+                 L"Mass, thrust and Isp deviations belong to the truth model on the main page."),
               28, 500, 850, 55, true);
     }
 
@@ -760,7 +767,7 @@ private:
 class PerturbationDialog final : public ModalWindow {
 public:
     PerturbationDialog(HWND owner, PerturbationConfig config)
-        : ModalWindow(owner, L"AeroGNC Lab v3.2｜摄动设置 / Perturbation Settings", 690, 520), config_(config) {}
+        : ModalWindow(owner, L"AeroSys Lab v4.1｜摄动设置 / Perturbation Settings", 690, 520), config_(config) {}
     const PerturbationConfig& result() const { return config_; }
 
 protected:

@@ -13,7 +13,7 @@ ctest --test-dir build -C Release --output-on-failure
 if errorlevel 1 goto :failed
 
 echo.
-echo AerospaceGNC build and tests passed.
+echo AeroSysLab v4.1 build and tests passed.
 popd
 pause
 exit /b 0
@@ -23,7 +23,7 @@ echo CMake was not found. Install Visual Studio C++ and CMake, then try again.
 
 :failed
 echo.
-echo AerospaceGNC build or tests failed.
+echo AeroSysLab build or tests failed.
 popd 2>nul
 pause
 exit /b 1

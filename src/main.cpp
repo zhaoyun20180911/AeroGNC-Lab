@@ -1,4 +1,6 @@
 #include "gnc/orbit.hpp"
+#include "gnc/localization.hpp"
+#include "gnc/recovery.hpp"
 #include "gnc/settings_dialogs.hpp"
 #include "gnc/simulation.hpp"
 #include "resource.h"
@@ -29,21 +31,23 @@ using gnc::RunState;
 using gnc::ScenarioKind;
 using gnc::SimulationSample;
 
-constexpr COLORREF kBackground = RGB(5, 11, 18);
-constexpr COLORREF kPanel = RGB(11, 22, 33);
-constexpr COLORREF kPanelRaised = RGB(16, 31, 44);
-constexpr COLORREF kBorder = RGB(32, 55, 71);
-constexpr COLORREF kGrid = RGB(27, 47, 61);
-constexpr COLORREF kText = RGB(229, 238, 243);
-constexpr COLORREF kMuted = RGB(126, 150, 164);
-constexpr COLORREF kAccent = RGB(49, 214, 177);
-constexpr COLORREF kCyan = RGB(70, 184, 255);
-constexpr COLORREF kAmber = RGB(255, 186, 78);
-constexpr COLORREF kRed = RGB(255, 103, 108);
-constexpr COLORREF kPurple = RGB(181, 132, 255);
+constexpr COLORREF kBackground = RGB(246, 248, 250);
+constexpr COLORREF kPanel = RGB(255, 255, 255);
+constexpr COLORREF kPanelRaised = RGB(241, 245, 247);
+constexpr COLORREF kBorder = RGB(194, 207, 215);
+constexpr COLORREF kGrid = RGB(220, 228, 233);
+constexpr COLORREF kText = RGB(27, 38, 45);
+constexpr COLORREF kMuted = RGB(91, 108, 118);
+constexpr COLORREF kAccent = RGB(0, 132, 110);
+constexpr COLORREF kCyan = RGB(0, 111, 184);
+constexpr COLORREF kAmber = RGB(184, 105, 0);
+constexpr COLORREF kRed = RGB(190, 45, 52);
+constexpr COLORREF kPurple = RGB(112, 69, 184);
 
 constexpr int kIdSatellite = 100;
 constexpr int kIdRocket = 101;
+constexpr int kIdRecovery = 102;
+constexpr int kIdLanguage = 103;
 constexpr int kIdControl = 104;
 constexpr int kIdDisturbance = 105;
 constexpr int kIdPerturbation = 106;
@@ -61,7 +65,7 @@ constexpr int kIdSite = 501;
 constexpr int kIdOrbit = 502;
 constexpr int kIdPlayback = 503;
 constexpr int kIdPlotFirst = 510;
-constexpr int kFieldCount = 24;
+constexpr int kFieldCount = 30;
 
 constexpr double kRecommendedSatelliteMassMinKg = 20.0;
 constexpr double kRecommendedSatelliteMassMaxKg = 2000.0;
@@ -136,10 +140,11 @@ void line(HDC dc, int x1, int y1, int x2, int y2, COLORREF color,
 
 void drawText(HDC dc, const std::wstring& value, RECT rect, HFONT font, COLORREF color,
               UINT flags = DT_LEFT | DT_VCENTER | DT_SINGLELINE) {
+    const std::wstring localized = gnc::gui::localizeBilingual(value);
     const HGDIOBJ old = SelectObject(dc, font);
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, color);
-    DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, flags | DT_NOPREFIX);
+    DrawTextW(dc, localized.c_str(), static_cast<int>(localized.size()), &rect, flags | DT_NOPREFIX);
     SelectObject(dc, old);
 }
 
@@ -208,7 +213,8 @@ bool loadEmbeddedMissionFiles(HINSTANCE instance,
 class Application {
 public:
     explicit Application(HINSTANCE instance)
-        : instance_(instance), satellite_(satelliteConfig_), rocket_(rocketConfig_) {}
+        : instance_(instance), satellite_(satelliteConfig_), rocket_(rocketConfig_),
+          recovery_(recoveryConfig_) {}
 
     ~Application() {
         for (HFONT font : {fontTiny_, fontSmall_, fontNormal_, fontMedium_, fontLarge_, fontMono_}) {
@@ -237,9 +243,10 @@ public:
             }
         }
         if (!missions_.loaded()) {
-            const std::wstring message = L"无法读取六组火箭任务数据。\nUnable to load the six rocket mission datasets.\n\n"
+            const std::wstring message = gnc::gui::tr(L"无法读取六组火箭任务数据。\n\n",
+                                                       L"Unable to load the six rocket mission datasets.\n\n")
                 + std::wstring(loadError.begin(), loadError.end());
-            MessageBoxW(nullptr, message.c_str(), L"AeroGNC Lab v3.2", MB_OK | MB_ICONERROR);
+            MessageBoxW(nullptr, message.c_str(), L"AeroSys Lab v4.1", MB_OK | MB_ICONERROR);
             return false;
         }
         selectMission(false);
@@ -251,15 +258,16 @@ public:
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
         wc.hbrBackground = nullptr;
-        wc.lpszClassName = L"AeroGNCLab31Window";
+        wc.lpszClassName = L"AeroSysLab41Window";
         if (!RegisterClassExW(&wc)) return false;
 
         hwnd_ = CreateWindowExW(0, wc.lpszClassName,
-            L"AeroGNC Lab v3.2｜航天器GNC仿真实验平台",
+            gnc::gui::tr(L"AeroSys Lab v4.1｜航天系统综合仿真平台",
+                         L"AeroSys Lab v4.1 | Aerospace Systems Simulation Platform").c_str(),
             WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
             CW_USEDEFAULT, CW_USEDEFAULT, 1580, 970, nullptr, nullptr, instance_, this);
         if (!hwnd_) return false;
-        const BOOL dark = TRUE;
+        const BOOL dark = FALSE;
         DwmSetWindowAttribute(hwnd_, 20, &dark, sizeof(dark));
         ShowWindow(hwnd_, showCommand);
         UpdateWindow(hwnd_);
@@ -327,7 +335,7 @@ private:
             HDC dc = reinterpret_cast<HDC>(wParam);
             SetTextColor(dc, index >= 0 && index < kFieldCount && invalid_[index] ? kRed
                             : (index >= 0 && index < kFieldCount && warning_[index] ? kAmber : kText));
-            SetBkColor(dc, RGB(9, 19, 28));
+            SetBkColor(dc, RGB(255, 255, 255));
             if (index >= 0 && index < kFieldCount && invalid_[index]) {
                 return reinterpret_cast<LRESULT>(invalidBrush_);
             }
@@ -409,6 +417,9 @@ private:
                 const gnc::Vec3 orbitNormal = sample().position.cross(sample().velocity).normalized();
                 camera_.yaw = std::atan2(orbitNormal.x, orbitNormal.y);
                 camera_.pitch = -std::asin(gnc::clamp(orbitNormal.z, -1.0, 1.0));
+            } else if (scenario_ == ScenarioKind::Recovery) {
+                camera_.yaw = 0.0;
+                camera_.pitch = 0.0;
             }
         } else if (cameraMode_ == 2) {
             camera_.yaw = -0.4;
@@ -427,13 +438,15 @@ private:
         fontMedium_ = makeFont(14, FW_SEMIBOLD);
         fontLarge_ = makeFont(23, FW_SEMIBOLD);
         fontMono_ = makeFont(12, FW_NORMAL, L"Cascadia Mono");
-        editBrush_ = CreateSolidBrush(RGB(9, 19, 28));
-        warningBrush_ = CreateSolidBrush(RGB(38, 31, 15));
-        invalidBrush_ = CreateSolidBrush(RGB(43, 19, 22));
+        editBrush_ = CreateSolidBrush(RGB(255, 255, 255));
+        warningBrush_ = CreateSolidBrush(RGB(255, 247, 218));
+        invalidBrush_ = CreateSolidBrush(RGB(255, 233, 236));
         listBrush_ = CreateSolidBrush(kPanelRaised);
 
-        createButton(kIdSatellite, L"卫星 / Satellite");
-        createButton(kIdRocket, L"运载火箭 / Launch Vehicle");
+        createButton(kIdSatellite, L"卫星姿轨控 / Satellite GNC");
+        createButton(kIdRocket, L"火箭上升入轨 / Launch to Orbit");
+        createButton(kIdRecovery, L"火箭一级回收 / First-Stage Recovery");
+        createButton(kIdLanguage, L"中文");
         createButton(kIdControl, L"姿态控制 / Attitude Control");
         createButton(kIdDisturbance, L"扰动设置 / Disturbance");
         createButton(kIdPerturbation, L"摄动设置 / Perturbation");
@@ -464,29 +477,7 @@ private:
         playbackCombo_ = createCombo(kIdPlayback);
         for (int index = 0; index < 4; ++index) plotCombos_[index] = createCombo(kIdPlotFirst + index);
 
-        const std::array<const wchar_t*, 4> objectives{
-            L"对地定向 / Nadir Pointing", L"惯性定向 / Inertial Pointing",
-            L"目标跟踪 / Target Tracking", L"姿态机动 / Slew Maneuver"};
-        for (const auto* item : objectives) SendMessageW(objectiveCombo_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item));
-        SendMessageW(objectiveCombo_, CB_SETCURSEL, 0, 0);
-
-        for (const auto site : {gnc::LaunchSite::Wenchang, gnc::LaunchSite::Xichang,
-                                gnc::LaunchSite::CapeCanaveral}) {
-            const std::wstring item = gnc::launchSiteBilingual(site);
-            SendMessageW(siteCombo_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item.c_str()));
-        }
-        SendMessageW(siteCombo_, CB_SETCURSEL, 0, 0);
-        for (const auto orbit : {gnc::TargetOrbit::Leo300Km28_5Deg,
-                                 gnc::TargetOrbit::Leo500Km51_6Deg}) {
-            const std::wstring item = gnc::targetOrbitBilingual(orbit);
-            SendMessageW(orbitCombo_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item.c_str()));
-        }
-        SendMessageW(orbitCombo_, CB_SETCURSEL, 0, 0);
-
-        const std::array<const wchar_t*, 10> speeds{
-            L"0.25×", L"0.5×", L"1×", L"2×", L"5×", L"10×", L"20×", L"50×", L"100×", L"最快 / Max"};
-        for (const auto* item : speeds) SendMessageW(playbackCombo_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(item));
-        SendMessageW(playbackCombo_, CB_SETCURSEL, 6, 0);
+        fillSelectionCombos(false);
 
         fillPlotCombos();
         setFieldValues();
@@ -495,7 +486,8 @@ private:
     }
 
     void createButton(int id, const wchar_t* label) {
-        HWND button = CreateWindowExW(0, L"BUTTON", label,
+        const std::wstring localized = gnc::gui::localizeBilingual(label);
+        HWND button = CreateWindowExW(0, L"BUTTON", localized.c_str(),
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
             0, 0, 120, 34, hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), instance_, nullptr);
         SendMessageW(button, WM_SETFONT, reinterpret_cast<WPARAM>(fontMedium_), TRUE);
@@ -508,6 +500,45 @@ private:
             0, 0, 160, 240, hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), instance_, nullptr);
         SendMessageW(combo, WM_SETFONT, reinterpret_cast<WPARAM>(fontSmall_), TRUE);
         return combo;
+    }
+
+    static void addComboItem(HWND combo, const std::wstring& value) {
+        const std::wstring localized = gnc::gui::localizeBilingual(value);
+        SendMessageW(combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(localized.c_str()));
+    }
+
+    void fillSelectionCombos(bool preserveSelection) {
+        const int objectiveSelection = preserveSelection
+            ? std::max(0, static_cast<int>(SendMessageW(objectiveCombo_, CB_GETCURSEL, 0, 0))) : 0;
+        const int siteSelection = preserveSelection
+            ? std::max(0, static_cast<int>(SendMessageW(siteCombo_, CB_GETCURSEL, 0, 0))) : 0;
+        const int orbitSelection = preserveSelection
+            ? std::max(0, static_cast<int>(SendMessageW(orbitCombo_, CB_GETCURSEL, 0, 0))) : 0;
+        const int playbackSelection = preserveSelection
+            ? std::max(0, static_cast<int>(SendMessageW(playbackCombo_, CB_GETCURSEL, 0, 0))) : 6;
+        for (HWND combo : {objectiveCombo_, siteCombo_, orbitCombo_, playbackCombo_}) {
+            SendMessageW(combo, CB_RESETCONTENT, 0, 0);
+        }
+        for (const wchar_t* item : {L"对地定向 / Nadir Pointing", L"惯性定向 / Inertial Pointing",
+                                    L"目标跟踪 / Target Tracking", L"姿态机动 / Slew Maneuver"}) {
+            addComboItem(objectiveCombo_, item);
+        }
+        for (const auto site : {gnc::LaunchSite::Wenchang, gnc::LaunchSite::Xichang,
+                                gnc::LaunchSite::CapeCanaveral}) {
+            addComboItem(siteCombo_, gnc::launchSiteBilingual(site));
+        }
+        for (const auto orbit : {gnc::TargetOrbit::Leo300Km28_5Deg,
+                                 gnc::TargetOrbit::Leo500Km51_6Deg}) {
+            addComboItem(orbitCombo_, gnc::targetOrbitBilingual(orbit));
+        }
+        for (const wchar_t* item : {L"0.25×", L"0.5×", L"1×", L"2×", L"5×", L"10×",
+                                    L"20×", L"50×", L"100×", L"最快 / Max"}) {
+            addComboItem(playbackCombo_, item);
+        }
+        SendMessageW(objectiveCombo_, CB_SETCURSEL, objectiveSelection, 0);
+        SendMessageW(siteCombo_, CB_SETCURSEL, siteSelection, 0);
+        SendMessageW(orbitCombo_, CB_SETCURSEL, orbitSelection, 0);
+        SendMessageW(playbackCombo_, CB_SETCURSEL, playbackSelection, 0);
     }
 
     void createTooltips() {
@@ -531,8 +562,10 @@ private:
     void updateTooltipTexts(bool updateControls = true) {
         if (scenario_ == ScenarioKind::Satellite) {
             tooltipTexts_ = {
-                L"合法 / Valid: a > 地球半径 / Earth radius. 建议 LEO / Suggested LEO: 6578–7378 km.",
-                L"合法 / Valid: 0 ≤ e < 1. 建议实验 / Suggested experiment: 0–0.2.",
+                gnc::gui::tr(L"合法：a > 地球半径。建议 LEO：6578–7378 km。",
+                             L"Valid: a > Earth radius. Suggested LEO: 6578–7378 km."),
+                gnc::gui::tr(L"合法：0 ≤ e < 1。建议实验范围：0–0.2。",
+                             L"Valid: 0 ≤ e < 1. Suggested experiment: 0–0.2."),
                 L"合法范围 / Valid range: 0–180 deg.", L"角度输入 / Angular input: deg.",
                 L"角度输入 / Angular input: deg.", L"角度输入 / Angular input: deg.",
                 L"中小型卫星建议 / Small-to-medium satellite suggestion: 20–2000 kg.",
@@ -551,7 +584,7 @@ private:
                 L"实际初始机体系滚转角速度偏差 / Initial body-frame roll-rate error.",
                 L"实际初始机体系俯仰角速度偏差 / Initial body-frame pitch-rate error.",
                 L"实际初始机体系偏航角速度偏差 / Initial body-frame yaw-rate error."};
-        } else {
+        } else if (scenario_ == ScenarioKind::Rocket) {
             tooltipTexts_ = {
                 L"建议实验范围 / Suggested experiment: ±5%.", L"建议实验范围 / Suggested experiment: ±10%.",
                 L"建议实验范围 / Suggested experiment: ±5%.", L"建议实验范围 / Suggested experiment: ±5%.",
@@ -565,6 +598,41 @@ private:
                 L"实际初始机体系角速率误差 / Actual initial body-rate error.",
                 L"超过标称文件末端将自动进入轨道滑行 / Beyond nominal file end, orbital coast starts automatically.",
                 L"", L"", L"", L"", L"", L"", L"", L"", L"", L""};
+        } else {
+            tooltipTexts_ = {
+                L"一级分离点相对着陆场的北向位置 / Separation north position relative to landing site.",
+                L"一级分离点相对着陆场的东向位置 / Separation east position relative to landing site.",
+                L"一级分离高度 AGL / Separation altitude above landing site.",
+                L"NED 北向初速度 / Initial north velocity in landing-site NED.",
+                L"NED 东向初速度 / Initial east velocity in landing-site NED.",
+                L"NED 向下初速度；负值表示上升 / Initial down velocity; negative means climbing.",
+                L"分离时一级总质量 / First-stage total mass at separation.",
+                L"分离时可用回收推进剂 / Recovery propellant available at separation.",
+                L"等效发动机组最大推力 / Maximum equivalent engine-cluster thrust.",
+                L"发动机最小节流比例 / Minimum engine throttle.",
+                L"发动机比冲 / Engine specific impulse.",
+                L"TVC 机械偏角限制 / TVC mechanical deflection limit.",
+                L"四片栅格舵的偏角限制 / Deflection limit for all four grid fins.",
+                L"仿真超时时间 / Simulation timeout.",
+                L"着陆点纬度（ECEF/NED 原点） / Landing-site latitude and ECEF/NED origin.",
+                L"着陆点经度（ECEF/NED 原点） / Landing-site longitude and ECEF/NED origin.",
+                L"大气密度比例 / Atmospheric density scale.",
+                L"NED 北向风速 / North wind component in NED.",
+                L"NED 东向风速 / East wind component in NED.",
+                L"制导与在线重规划频率 / Guidance and online replanning frequency.",
+                L"动态制动距离之外的点火安全余量 / Landing-burn margin added to braking distance.",
+                L"在线凸 QP 的滚动预测步数 / Receding-horizon convex-QP step count.",
+                L"QP 最大预测步长；近地面按剩余时间自适应缩短 / Maximum QP step; shrinks near ground.",
+                L"用于标准推力偏差工况 / Equivalent thrust bias for robustness testing.",
+                L"QP 末端位置误差权重 / QP terminal-position weight.",
+                L"QP 末端速度误差权重 / QP terminal-velocity weight.",
+                L"QP 控制消耗权重 / QP control-effort weight.",
+                L"QP 相邻控制量平滑权重 / QP control-smoothness weight.",
+                L"QP 坐标更新收敛容差 / QP coordinate-update convergence tolerance.",
+                L"QP 最大迭代次数 / QP maximum iteration count."};
+        }
+        for (std::wstring& text : tooltipTexts_) {
+            text = gnc::gui::localizeBilingual(text);
         }
         if (!updateControls || !tooltip_) return;
         for (int index = 0; index < kFieldCount; ++index) {
@@ -578,8 +646,10 @@ private:
     }
 
     int bottomTop(int height) const {
-        const bool satellite = scenario_ == ScenarioKind::Satellite;
-        return std::max(satellite ? 460 : 518, height - (satellite ? 360 : 302));
+        const int panelHeight = scenario_ == ScenarioKind::Recovery ? 417
+            : (scenario_ == ScenarioKind::Satellite ? 360 : 302);
+        return std::max(scenario_ == ScenarioKind::Rocket ? 518 : 460,
+                        height - panelHeight);
     }
 
     RECT contentRect(int width, int height) const {
@@ -605,6 +675,8 @@ private:
         if (width <= 0 || height <= 0) return;
         MoveWindow(buttons_[kIdSatellite], 22, 58, 166, 34, TRUE);
         MoveWindow(buttons_[kIdRocket], 195, 58, 216, 34, TRUE);
+        MoveWindow(buttons_[kIdRecovery], 418, 58, 245, 34, TRUE);
+        MoveWindow(buttons_[kIdLanguage], 675, 58, 116, 34, TRUE);
 
         int x = width - 22;
         const std::array<std::pair<int, int>, 4> actions{{{kIdExport, 145}, {kIdReset, 112},
@@ -706,6 +778,43 @@ private:
             return fields;
         }
 
+        if (scenario_ == ScenarioKind::Recovery) {
+            const auto& c = recoveryConfig_;
+            const gnc::NedFrame frame = gnc::makeLandingNedFrame(c.landingSite);
+            const gnc::Vec3 position = gnc::ecefPositionToNed(c.initialState.positionEcefM, frame);
+            const gnc::Vec3 velocity = gnc::ecefVectorToNed(c.initialState.velocityEcefMps, frame);
+            return {{{L"分离北向位置 / Sep. north (m)", number(position.x, 1)},
+                     {L"分离东向位置 / Sep. east (m)", number(position.y, 1)},
+                     {L"分离高度 / Sep. altitude (m)", number(-position.z, 1)},
+                     {L"北向速度 / North velocity (m/s)", number(velocity.x, 2)},
+                     {L"东向速度 / East velocity (m/s)", number(velocity.y, 2)},
+                     {L"向下速度 / Down velocity (m/s)", number(velocity.z, 2)},
+                     {L"总质量 / Total mass (kg)", number(c.initialState.massTotalKg, 1)},
+                     {L"推进剂 / Propellant (kg)", number(c.initialState.propellantMassKg, 1)},
+                     {L"最大推力 / Max thrust (kN)", number(c.vehicle.maxThrustN / 1000.0, 1)},
+                     {L"最小节流 / Min throttle (%)", number(c.vehicle.minThrottle * 100.0, 1)},
+                     {L"比冲 / Specific impulse (s)", number(c.vehicle.specificImpulseSec, 1)},
+                     {L"TVC 限制 / TVC limit (deg)", number(c.vehicle.tvcLimitDeg, 1)},
+                     {L"栅格舵限制 / Grid-fin limit (deg)", number(c.vehicle.gridFinLimitDeg, 1)},
+                     {L"仿真时长 / Duration (s)", number(c.durationSec, 0)},
+                     {L"着陆点纬度 / Site latitude (deg)", number(c.landingSite.latitudeDeg, 4)},
+                     {L"着陆点经度 / Site longitude (deg)", number(c.landingSite.longitudeDeg, 4)},
+                     {L"大气密度比例 / Density scale", number(c.atmosphereDensityScale, 3)},
+                     {L"北向风 / North wind (m/s)", number(c.windNedMps.x, 2)},
+                     {L"东向风 / East wind (m/s)", number(c.windNedMps.y, 2)},
+                     {L"制导频率 / Guidance rate (Hz)", number(c.guidanceFrequencyHz, 1)},
+                     {L"着陆点火余量 / Burn margin (m)", number(c.landingBurnSafetyMarginM, 1)},
+                     {L"QP 预测步数 / QP horizon", number(c.landingQpHorizon, 0)},
+                     {L"QP 最大步长 / QP max dt (s)", number(c.landingQpDtSec, 3)},
+                     {L"推力偏差 / Thrust bias (%)", number(c.vehicle.thrustBiasPercent, 2)},
+                     {L"末端位置权重 / Position weight", number(c.weightTerminalPosition, 3)},
+                     {L"末端速度权重 / Velocity weight", number(c.weightTerminalVelocity, 3)},
+                     {L"控制消耗权重 / Effort weight", number(c.weightControlEffort, 4)},
+                     {L"控制平滑权重 / Smoothness weight", number(c.weightControlSmoothness, 3)},
+                     {L"求解容差 / Solver tolerance", compact(c.solverTolerance, 3)},
+                     {L"最大迭代 / Max iterations", number(c.solverMaxIterations, 0)}}};
+        }
+
         const auto& d = rocketConfig_.deviations;
         return {{{L"质量偏差 / Mass deviation (%)", number(d.massPercent, 2)},
                  {L"惯量偏差 / Inertia deviation (%)", number(d.inertiaPercent, 2)},
@@ -790,7 +899,7 @@ private:
             c.initialRateDegPerSec = {readField(21, c.initialRateDegPerSec.x),
                                       readField(22, c.initialRateDegPerSec.y),
                                       readField(23, c.initialRateDegPerSec.z)};
-        } else {
+        } else if (scenario_ == ScenarioKind::Rocket) {
             auto& c = rocketConfig_;
             c.deviations = {readField(0, c.deviations.massPercent),
                             readField(1, c.deviations.inertiaPercent),
@@ -807,6 +916,41 @@ private:
                                            readField(12, c.initialRateErrorDegPerSec.z)};
             c.durationSec = readField(13, c.durationSec);
             selectMission(false);
+        } else {
+            auto& c = recoveryConfig_;
+            c.landingSite.latitudeDeg = readField(14, c.landingSite.latitudeDeg);
+            c.landingSite.longitudeDeg = readField(15, c.landingSite.longitudeDeg);
+            const gnc::NedFrame frame = gnc::makeLandingNedFrame(c.landingSite);
+            const gnc::Vec3 positionNed{readField(0, 0.0), readField(1, 0.0),
+                                        -readField(2, 0.0)};
+            const gnc::Vec3 velocityNed{readField(3, 0.0), readField(4, 0.0),
+                                        readField(5, 0.0)};
+            c.initialState.positionEcefM = gnc::nedPositionToEcef(positionNed, frame);
+            c.initialState.velocityEcefMps = gnc::nedVectorToEcef(velocityNed, frame);
+            c.initialState.bodyToEcef = gnc::attitudeFromBodyX(
+                c.initialState.velocityEcefMps, frame.eastEcef);
+            c.initialState.massTotalKg = readField(6, c.initialState.massTotalKg);
+            c.initialState.propellantMassKg = readField(7, c.initialState.propellantMassKg);
+            c.vehicle.maxThrustN = readField(8, c.vehicle.maxThrustN / 1000.0) * 1000.0;
+            c.vehicle.minThrottle = readField(9, c.vehicle.minThrottle * 100.0) / 100.0;
+            c.vehicle.specificImpulseSec = readField(10, c.vehicle.specificImpulseSec);
+            c.vehicle.tvcLimitDeg = readField(11, c.vehicle.tvcLimitDeg);
+            c.vehicle.gridFinLimitDeg = readField(12, c.vehicle.gridFinLimitDeg);
+            c.durationSec = readField(13, c.durationSec);
+            c.atmosphereDensityScale = readField(16, c.atmosphereDensityScale);
+            c.windNedMps = {readField(17, c.windNedMps.x), readField(18, c.windNedMps.y), 0.0};
+            c.guidanceFrequencyHz = readField(19, c.guidanceFrequencyHz);
+            c.landingBurnSafetyMarginM = readField(20, c.landingBurnSafetyMarginM);
+            c.landingQpHorizon = static_cast<int>(std::lround(readField(21, c.landingQpHorizon)));
+            c.landingQpDtSec = readField(22, c.landingQpDtSec);
+            c.vehicle.thrustBiasPercent = readField(23, c.vehicle.thrustBiasPercent);
+            c.weightTerminalPosition = readField(24, c.weightTerminalPosition);
+            c.weightTerminalVelocity = readField(25, c.weightTerminalVelocity);
+            c.weightControlEffort = readField(26, c.weightControlEffort);
+            c.weightControlSmoothness = readField(27, c.weightControlSmoothness);
+            c.solverTolerance = readField(28, c.solverTolerance);
+            c.solverMaxIterations = static_cast<int>(std::lround(
+                readField(29, c.solverMaxIterations)));
         }
         const int speedIndex = static_cast<int>(SendMessageW(playbackCombo_, CB_GETCURSEL, 0, 0));
         const std::array<double, 9> speeds{0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0};
@@ -814,6 +958,9 @@ private:
         satelliteConfig_.playbackSpeed = speed;
         rocketConfig_.playbackSpeed = speed;
         rocketConfig_.maxPlayback = speedIndex == 9;
+        recoveryConfig_.playbackSpeed = speed;
+        recoveryConfig_.maxPlayback = speedIndex == 9;
+        maxPlayback_ = speedIndex == 9;
         return true;
     }
 
@@ -847,12 +994,31 @@ private:
                 if (std::abs(readField(14, 0.0)) > 90.0) invalid_[14] = true;
                 if (std::abs(readField(15, 0.0)) > 180.0) invalid_[15] = true;
             }
-        } else {
+        } else if (scenario_ == ScenarioKind::Rocket) {
             for (int i = 0; i < 6; ++i) if (readField(i, 0.0) <= -99.0) invalid_[i] = true;
             if (readField(13, 0.0) <= 0.0) invalid_[13] = true;
             for (int i = 0; i < 7; ++i) {
                 warning_[i] = std::abs(readField(i, 0.0)) > kRecommendedRocketDeviationAbs[i];
             }
+        } else {
+            for (int i : {2, 6, 7, 8, 10, 13, 16, 19, 20, 21, 22,
+                          24, 25, 26, 27, 28, 29}) {
+                if (readField(i, 0.0) <= 0.0) invalid_[i] = true;
+            }
+            if (readField(7, 0.0) > readField(6, 0.0) - recoveryConfig_.vehicle.dryMassKg) {
+                invalid_[6] = invalid_[7] = true;
+            }
+            if (readField(9, 0.0) < 0.0 || readField(9, 0.0) > 100.0) invalid_[9] = true;
+            if (readField(11, 0.0) <= 0.0 || readField(11, 0.0) > 30.0) invalid_[11] = true;
+            if (readField(12, 0.0) <= 0.0 || readField(12, 0.0) > 60.0) invalid_[12] = true;
+            if (std::abs(readField(14, 0.0)) > 90.0) invalid_[14] = true;
+            if (std::abs(readField(15, 0.0)) > 180.0) invalid_[15] = true;
+            if (readField(19, 0.0) > 50.0) invalid_[19] = true;
+            if (readField(21, 0.0) < 4.0 || readField(21, 0.0) > 80.0) invalid_[21] = true;
+            if (readField(29, 0.0) < 10.0 || readField(29, 0.0) > 1000.0) invalid_[29] = true;
+            warning_[23] = std::abs(readField(23, 0.0)) > 5.0;
+            warning_[17] = std::abs(readField(17, 0.0)) > 25.0;
+            warning_[18] = std::abs(readField(18, 0.0)) > 25.0;
         }
         const bool ok = std::none_of(invalid_.begin(), invalid_.end(), [](bool value) { return value; });
         const bool hasWarning = std::any_of(warning_.begin(), warning_.end(), [](bool value) { return value; });
@@ -883,7 +1049,8 @@ private:
     void resetSimulation(bool read = true) {
         if (read && !readConfig(true)) return;
         if (scenario_ == ScenarioKind::Satellite) satellite_.reset(satelliteConfig_);
-        else rocket_.reset(rocketConfig_);
+        else if (scenario_ == ScenarioKind::Rocket) rocket_.reset(rocketConfig_);
+        else recovery_.reset(recoveryConfig_);
         runState_ = RunState::Ready;
         accumulator_ = 0.0;
         coastAutoSwitched_ = false;
@@ -914,8 +1081,15 @@ private:
             resetSimulation(false);
             return;
         }
-        if (id == kIdSatellite || id == kIdRocket) {
-            const ScenarioKind next = id == kIdSatellite ? ScenarioKind::Satellite : ScenarioKind::Rocket;
+        if (id == kIdLanguage) {
+            gnc::gui::setUiLanguage(gnc::gui::englishUi()
+                ? gnc::gui::UiLanguage::Chinese : gnc::gui::UiLanguage::English);
+            refreshLanguage();
+            return;
+        }
+        if (id == kIdSatellite || id == kIdRocket || id == kIdRecovery) {
+            const ScenarioKind next = id == kIdSatellite ? ScenarioKind::Satellite
+                : (id == kIdRocket ? ScenarioKind::Rocket : ScenarioKind::Recovery);
             if (next != scenario_) {
                 scenario_ = next;
                 runState_ = RunState::Ready;
@@ -941,7 +1115,7 @@ private:
                     satelliteConfig_.inertiaKgM2,
                     {satelliteConfig_.wheelMaxTorqueNm, satelliteConfig_.wheelMaxTorqueNm,
                      satelliteConfig_.wheelMaxTorqueNm});
-            } else if (rocketConfig_.mission) {
+            } else if (scenario_ == ScenarioKind::Rocket && rocketConfig_.mission) {
                 const auto& s = rocketConfig_.mission->summary;
                 const double inertiaScale = std::max(0.01, 1.0 + rocketConfig_.deviations.inertiaPercent / 100.0);
                 const double thrustScale = std::max(0.01, 1.0 + rocketConfig_.deviations.thrustPercent / 100.0);
@@ -950,15 +1124,27 @@ private:
                 gnc::gui::showControlSettings(hwnd_, scenario_, rocketConfig_.control,
                     s.nominalWetInertiaKgM2 * inertiaScale,
                     {s.maxRollRcsTorqueNm, torque, torque});
+            } else {
+                gnc::gui::showControlSettings(hwnd_, scenario_, recoveryConfig_.attitudeControl,
+                    recoveryConfig_.vehicle.inertiaKgM2,
+                    {recoveryConfig_.vehicle.maxRcsTorqueNm,
+                     recoveryConfig_.vehicle.maxRcsTorqueNm,
+                     recoveryConfig_.vehicle.maxRcsTorqueNm});
             }
             InvalidateRect(hwnd_, nullptr, FALSE);
             return;
         }
-        if (id == kIdDisturbance) {
+        if (id == kIdDisturbance && scenario_ != ScenarioKind::Recovery) {
             readConfig(false);
             gnc::gui::showDisturbanceSettings(hwnd_, scenario_, satelliteConfig_.disturbances,
                                                rocketConfig_.disturbances);
             InvalidateRect(hwnd_, nullptr, FALSE);
+            return;
+        }
+        if (id == kIdGuidance && scenario_ == ScenarioKind::Recovery) {
+            recoveryConfig_ = gnc::makeDefaultRecoveryConfiguration();
+            setFieldValues();
+            resetSimulation(false);
             return;
         }
         if (id == kIdGuidance && scenario_ == ScenarioKind::Rocket) {
@@ -980,7 +1166,7 @@ private:
         }
         if (id == kIdStart) {
             resetSimulation();
-            if (scenario_ == ScenarioKind::Satellite || rocket_.valid()) {
+            if (scenario_ != ScenarioKind::Rocket || rocket_.valid()) {
                 runState_ = RunState::Running;
                 lastTick_ = std::chrono::steady_clock::now();
                 updateButtonText();
@@ -1028,32 +1214,65 @@ private:
     }
 
     void updateControlState() {
-        ShowWindow(buttons_[kIdGuidance], scenario_ == ScenarioKind::Rocket ? SW_SHOW : SW_HIDE);
+        ShowWindow(buttons_[kIdGuidance], scenario_ != ScenarioKind::Satellite ? SW_SHOW : SW_HIDE);
         ShowWindow(buttons_[kIdOrbitControl], scenario_ == ScenarioKind::Satellite ? SW_SHOW : SW_HIDE);
         ShowWindow(buttons_[kIdPerturbation], scenario_ == ScenarioKind::Satellite ? SW_SHOW : SW_HIDE);
-        EnableWindow(buttons_[kIdGuidance], scenario_ == ScenarioKind::Rocket);
+        ShowWindow(buttons_[kIdDisturbance], scenario_ != ScenarioKind::Recovery ? SW_SHOW : SW_HIDE);
+        EnableWindow(buttons_[kIdGuidance], scenario_ != ScenarioKind::Satellite);
         EnableWindow(buttons_[kIdOrbitControl], scenario_ == ScenarioKind::Satellite);
         EnableWindow(buttons_[kIdPerturbation], scenario_ == ScenarioKind::Satellite);
-        SetWindowTextW(buttons_[kIdCameraFirst + 0], scenario_ == ScenarioKind::Satellite
-            ? L"三维 / 3D" : L"局部 / Ascent");
-        SetWindowTextW(buttons_[kIdCameraFirst + 1], scenario_ == ScenarioKind::Satellite
-            ? L"轨道面 / Orbit" : L"全球 / Global");
-        SetWindowTextW(buttons_[kIdCameraFirst + 2], L"跟随 / Follow");
-        SetWindowTextW(buttons_[kIdCameraFirst + 3], scenario_ == ScenarioKind::Satellite
-            ? L"俯视 / Top" : L"俯视 / Top");
+        setButtonText(kIdGuidance, scenario_ == ScenarioKind::Recovery
+            ? L"恢复默认 / Default Config" : L"轨迹制导 / Guidance");
+        setButtonText(kIdCameraFirst + 0, scenario_ == ScenarioKind::Rocket
+            ? L"局部 / Ascent" : L"三维 / 3D");
+        setButtonText(kIdCameraFirst + 1, scenario_ == ScenarioKind::Satellite
+            ? L"轨道面 / Orbit" : (scenario_ == ScenarioKind::Rocket ? L"全球 / Global" : L"侧视 / Side"));
+        setButtonText(kIdCameraFirst + 2, L"跟随 / Follow");
+        setButtonText(kIdCameraFirst + 3, L"俯视 / Top");
     }
 
     void updateButtonText() {
-        SetWindowTextW(buttons_[kIdPause], runState_ == RunState::Paused ? L"继续 / Resume" : L"暂停 / Pause");
-        SetWindowTextW(buttons_[kIdStart], runState_ == RunState::Completed ? L"重新开始 / Restart" : L"开始 / Start");
-        SetWindowTextW(buttons_[kIdEnlarge], enlarged_ ? L"还原 / Restore" : L"放大 / Enlarge");
+        setButtonText(kIdPause, runState_ == RunState::Paused ? L"继续 / Resume" : L"暂停 / Pause");
+        setButtonText(kIdStart, runState_ == RunState::Completed ? L"重新开始 / Restart" : L"开始 / Start");
+        setButtonText(kIdEnlarge, enlarged_ ? L"还原 / Restore" : L"放大 / Enlarge");
         for (const auto& [id, button] : buttons_) {
             (void)id;
             InvalidateRect(button, nullptr, TRUE);
         }
     }
 
-    void fillPlotCombos() {
+    void setButtonText(int id, const std::wstring& value) {
+        const auto found = buttons_.find(id);
+        if (found == buttons_.end()) return;
+        const std::wstring localized = gnc::gui::localizeBilingual(value);
+        SetWindowTextW(found->second, localized.c_str());
+    }
+
+    void refreshLanguage() {
+        const std::wstring title = gnc::gui::tr(
+            L"AeroSys Lab v4.1｜航天系统综合仿真平台",
+            L"AeroSys Lab v4.1 | Aerospace Systems Simulation Platform");
+        SetWindowTextW(hwnd_, title.c_str());
+        setButtonText(kIdSatellite, L"卫星姿轨控 / Satellite GNC");
+        setButtonText(kIdRocket, L"火箭上升入轨 / Launch to Orbit");
+        setButtonText(kIdRecovery, L"火箭一级回收 / First-Stage Recovery");
+        setButtonText(kIdLanguage, gnc::gui::englishUi() ? L"English" : L"中文");
+        setButtonText(kIdControl, L"姿态控制 / Attitude Control");
+        setButtonText(kIdDisturbance, L"扰动设置 / Disturbance");
+        setButtonText(kIdPerturbation, L"摄动设置 / Perturbation");
+        setButtonText(kIdOrbitControl, L"轨道控制 / Orbit Control");
+        setButtonText(kIdExport, L"导出 / Export CSV");
+        setButtonText(kIdReset, L"重置 / Reset");
+        fillSelectionCombos(true);
+        fillPlotCombos(true);
+        updateTooltipTexts();
+        updateControlState();
+        updateButtonText();
+        validateInputs(false);
+        InvalidateRect(hwnd_, nullptr, TRUE);
+    }
+
+    void fillPlotCombos(bool preserveSelection = false) {
         const std::vector<std::wstring> satelliteNames{
             L"参考/实际俯仰 / Ref vs actual pitch", L"姿态误差 / Attitude error",
             L"角速度 / Angular rate", L"控制力矩 / Control torque",
@@ -1087,17 +1306,34 @@ private:
             L"制导俯仰/偏航修正 / Guidance pitch vs yaw correction",
             L"剩余推进剂 / Propellant remaining",
             L"轨道比能量误差 / Specific-energy error"};
-        const auto& names = scenario_ == ScenarioKind::Satellite ? satelliteNames : rocketNames;
+        const std::vector<std::wstring> recoveryNames{
+            L"高度/地面距离 / Altitude vs ground distance",
+            L"水平/垂直速度 / Horizontal vs vertical velocity",
+            L"当前位置/预测落点误差 / Current vs predicted landing error",
+            L"推力 / Thrust", L"剩余推进剂 / Propellant remaining",
+            L"TVC 俯仰/偏航 / TVC pitch vs yaw",
+            L"栅格舵最大偏角 / Max grid-fin deflection",
+            L"姿态误差 / Attitude error", L"动压 / Dynamic pressure",
+            L"高度/制动距离 / Altitude vs braking distance",
+            L"QP 求解时间 / QP solve time", L"QP 成功率 / QP success rate",
+            L"回收阶段编号 / Recovery phase"};
+        const auto& names = scenario_ == ScenarioKind::Satellite ? satelliteNames
+            : (scenario_ == ScenarioKind::Rocket ? rocketNames : recoveryNames);
         const std::array<int, 4> satelliteDefaults{1, 9, 13, 8};
         const std::array<int, 4> rocketDefaults{2, 9, 6, 0};
+        const std::array<int, 4> recoveryDefaults{0, 1, 2, 10};
         for (int plot = 0; plot < 4; ++plot) {
             if (!plotCombos_[plot]) continue;
+            const int previous = preserveSelection
+                ? static_cast<int>(SendMessageW(plotCombos_[plot], CB_GETCURSEL, 0, 0)) : -1;
             SendMessageW(plotCombos_[plot], CB_RESETCONTENT, 0, 0);
             for (const auto& name : names) {
-                SendMessageW(plotCombos_[plot], CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(name.c_str()));
+                addComboItem(plotCombos_[plot], name);
             }
-            SendMessageW(plotCombos_[plot], CB_SETCURSEL,
-                scenario_ == ScenarioKind::Satellite ? satelliteDefaults[plot] : rocketDefaults[plot], 0);
+            const int selection = preserveSelection && previous >= 0 ? previous
+                : (scenario_ == ScenarioKind::Satellite ? satelliteDefaults[plot]
+                   : (scenario_ == ScenarioKind::Rocket ? rocketDefaults[plot] : recoveryDefaults[plot]));
+            SendMessageW(plotCombos_[plot], CB_SETCURSEL, selection, 0);
         }
     }
 
@@ -1108,11 +1344,13 @@ private:
         if (runState_ != RunState::Running) return;
         constexpr double dt = 0.02;
         int steps{};
-        if (rocketConfig_.maxPlayback) {
+        if (maxPlayback_) {
             steps = 5000;
         } else {
             const double playback = scenario_ == ScenarioKind::Satellite
-                ? satellite_.config().playbackSpeed : rocket_.config().playbackSpeed;
+                ? satellite_.config().playbackSpeed
+                : (scenario_ == ScenarioKind::Rocket ? rocket_.config().playbackSpeed
+                                                      : recovery_.config().playbackSpeed);
             accumulator_ += std::min(0.10, wall) * playback;
             steps = std::min(5000, static_cast<int>(accumulator_ / dt));
             accumulator_ -= steps * dt;
@@ -1120,7 +1358,7 @@ private:
         for (int i = 0; i < steps; ++i) {
             if (scenario_ == ScenarioKind::Satellite) {
                 satellite_.step(dt);
-            } else {
+            } else if (scenario_ == ScenarioKind::Rocket) {
                 const bool wasCoast = rocket_.currentSample().orbitalCoast;
                 rocket_.step(dt);
                 if (!wasCoast && rocket_.currentSample().orbitalCoast && !coastAutoSwitched_) {
@@ -1131,9 +1369,12 @@ private:
                     resetCamera();
                     updateButtonText();
                 }
+            } else {
+                recovery_.step(dt);
             }
             if ((scenario_ == ScenarioKind::Satellite && satellite_.complete())
-                || (scenario_ == ScenarioKind::Rocket && rocket_.complete())) {
+                || (scenario_ == ScenarioKind::Rocket && rocket_.complete())
+                || (scenario_ == ScenarioKind::Recovery && recovery_.complete())) {
                 runState_ = RunState::Completed;
                 accumulator_ = 0.0;
                 updateButtonText();
@@ -1144,41 +1385,59 @@ private:
     }
 
     const SimulationSample& sample() const {
-        return scenario_ == ScenarioKind::Satellite ? satellite_.currentSample() : rocket_.currentSample();
+        return scenario_ == ScenarioKind::Satellite ? satellite_.currentSample()
+            : (scenario_ == ScenarioKind::Rocket ? rocket_.currentSample() : recovery_.currentSample());
     }
 
     const std::vector<SimulationSample>& history() const {
-        return scenario_ == ScenarioKind::Satellite ? satellite_.history() : rocket_.history();
+        return scenario_ == ScenarioKind::Satellite ? satellite_.history()
+            : (scenario_ == ScenarioKind::Rocket ? rocket_.history() : recovery_.history());
     }
 
     double duration() const {
-        return scenario_ == ScenarioKind::Satellite ? satellite_.config().durationSec : rocket_.config().durationSec;
+        return scenario_ == ScenarioKind::Satellite ? satellite_.config().durationSec
+            : (scenario_ == ScenarioKind::Rocket ? rocket_.config().durationSec
+                                                  : recovery_.config().durationSec);
     }
 
     gnc::PerformanceMetrics metrics() const {
-        return scenario_ == ScenarioKind::Satellite ? satellite_.metrics() : rocket_.metrics();
+        if (scenario_ == ScenarioKind::Satellite) return satellite_.metrics();
+        if (scenario_ == ScenarioKind::Rocket) return rocket_.metrics();
+        return {};
     }
 
     void exportData() {
         wchar_t path[MAX_PATH]{};
         wcscpy_s(path, scenario_ == ScenarioKind::Satellite
-            ? L"SatelliteTelemetry_卫星遥测.csv" : L"RocketTelemetry_火箭遥测.csv");
+            ? (gnc::gui::englishUi() ? L"SatelliteTelemetry.csv" : L"卫星遥测.csv")
+            : (scenario_ == ScenarioKind::Rocket
+                ? (gnc::gui::englishUi() ? L"RocketTelemetry.csv" : L"火箭遥测.csv")
+                : (gnc::gui::englishUi() ? L"RecoveryTelemetry.csv" : L"一级回收遥测.csv")));
         OPENFILENAMEW dialog{sizeof(dialog)};
         dialog.hwndOwner = hwnd_;
-        dialog.lpstrFilter = L"CSV 数据文件 / CSV data (*.csv)\0*.csv\0所有文件 / All files (*.*)\0*.*\0";
+        dialog.lpstrFilter = gnc::gui::englishUi()
+            ? L"CSV data (*.csv)\0*.csv\0All files (*.*)\0*.*\0"
+            : L"CSV 数据文件 (*.csv)\0*.csv\0所有文件 (*.*)\0*.*\0";
         dialog.lpstrFile = path;
         dialog.nMaxFile = MAX_PATH;
         dialog.lpstrDefExt = L"csv";
         dialog.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
         if (GetSaveFileNameW(&dialog)) {
-            const bool ok = gnc::exportCsv(path, scenario_, history());
-            MessageBoxW(hwnd_, ok ? L"仿真数据已导出。\nSimulation data exported."
-                                  : L"无法写入所选文件。\nUnable to write the selected file.",
-                        L"AeroGNC Lab v3.2", MB_OK | (ok ? MB_ICONINFORMATION : MB_ICONERROR));
+            const bool ok = scenario_ == ScenarioKind::Recovery
+                ? gnc::exportRecoveryCsv(path, history()) : gnc::exportCsv(path, scenario_, history());
+            const std::wstring message = ok
+                ? gnc::gui::tr(L"仿真数据已导出。", L"Simulation data exported.")
+                : gnc::gui::tr(L"无法写入所选文件。", L"Unable to write the selected file.");
+            MessageBoxW(hwnd_, message.c_str(),
+                        L"AeroSys Lab v4.1", MB_OK | (ok ? MB_ICONINFORMATION : MB_ICONERROR));
         }
     }
 
     std::wstring statusText() const {
+        if (scenario_ == ScenarioKind::Recovery
+            && recovery_.phase() == gnc::RecoveryPhase::Failed) {
+            return L"× 失败 / Failed";
+        }
         switch (runState_) {
         case RunState::Running: return L"● 运行中 / Running";
         case RunState::Paused: return L"Ⅱ 已暂停 / Paused";
@@ -1193,19 +1452,20 @@ private:
         const bool disabled = (item.itemState & ODS_DISABLED) != 0;
         const bool active = (id == kIdSatellite && scenario_ == ScenarioKind::Satellite)
                          || (id == kIdRocket && scenario_ == ScenarioKind::Rocket)
+                         || (id == kIdRecovery && scenario_ == ScenarioKind::Recovery)
                          || (id == kIdPause && runState_ == RunState::Paused)
                          || (id >= kIdCameraFirst && id < kIdCameraFirst + 4
                              && id - kIdCameraFirst == cameraMode_);
-        COLORREF background = active ? RGB(22, 88, 80) : kPanelRaised;
+        COLORREF background = active ? RGB(219, 243, 237) : kPanelRaised;
         COLORREF border = active ? kAccent : kBorder;
-        if (id == kIdStart) { background = RGB(23, 103, 84); border = kAccent; }
-        if (pressed) background = RGB(29, 65, 75);
-        if (disabled) { background = RGB(14, 23, 31); border = RGB(28, 39, 47); }
+        if (id == kIdStart) { background = RGB(204, 239, 229); border = kAccent; }
+        if (pressed) background = RGB(202, 225, 229);
+        if (disabled) { background = RGB(245, 247, 248); border = RGB(221, 228, 232); }
         fillRounded(item.hDC, item.rcItem, background, 8, border);
         wchar_t label[96]{};
         GetWindowTextW(item.hwndItem, label, 95);
         drawText(item.hDC, label, item.rcItem, id >= kIdCameraFirst ? fontSmall_ : fontMedium_,
-                 disabled ? RGB(72, 87, 97) : kText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                 disabled ? RGB(155, 166, 173) : kText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         if (item.itemState & ODS_FOCUS) {
             RECT focus = item.rcItem; InflateRect(&focus, -4, -4); DrawFocusRect(item.hDC, &focus);
         }
@@ -1230,13 +1490,14 @@ private:
     }
 
     void drawHeader(HDC dc, const RECT& client) {
-        fillSolid(dc, {0, 0, client.right, 150}, RGB(7, 15, 23));
+        fillSolid(dc, {0, 0, client.right, 150}, kPanel);
         line(dc, 0, 149, client.right, 149, kBorder);
-        drawText(dc, L"AeroGNC Lab v3.2｜航天器GNC仿真实验平台",
+        drawText(dc, gnc::gui::tr(L"AeroSys Lab v4.1｜航天系统综合仿真平台",
+                                   L"AeroSys Lab v4.1 | Aerospace Systems Simulation Platform"),
                  {22, 8, 720, 58}, fontLarge_, kText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         const double progress = duration() > 0.0 ? gnc::clamp(sample().time / duration(), 0.0, 1.0) : 0.0;
-        fillSolid(dc, {0, 146, client.right, 150}, RGB(12, 27, 37));
+        fillSolid(dc, {0, 146, client.right, 150}, RGB(226, 233, 237));
         fillSolid(dc, {0, 146, static_cast<LONG>(client.right * progress), 150}, kAccent);
     }
 
@@ -1257,20 +1518,22 @@ private:
         fillRounded(dc, rect, kPanel, 13);
         drawText(dc, scenario_ == ScenarioKind::Satellite
             ? L"轨道与姿态三维视图 / Orbit & Attitude 3D View"
-            : (rocketGlobalView_ ? L"上升与入轨全球视图 / Ascent & Orbit Global View"
-                                 : L"标称与实际上升轨迹 / Nominal & Actual Ascent"),
+            : (scenario_ == ScenarioKind::Recovery ? L"返回发射场轨迹 / RTLS Recovery Trajectory"
+               : (rocketGlobalView_ ? L"上升与入轨全球视图 / Ascent & Orbit Global View"
+                                    : L"标称与实际上升轨迹 / Nominal & Actual Ascent")),
             {rect.left + 15, rect.top + 8, rect.right - 150, rect.top + 38}, fontMedium_, kText);
         drawText(dc, L"T+ " + number(sample().time, 1) + L" s",
             {rect.right - 150, rect.top + 8, rect.right - 15, rect.top + 38}, fontMono_, kAccent,
             DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
         visualViewport_ = {rect.left + 9, rect.top + 81, rect.right - 9,
                            rect.bottom - 183};
-        fillRounded(dc, visualViewport_, RGB(4, 12, 20), 9, RGB(19, 39, 52));
+        fillRounded(dc, visualViewport_, RGB(252, 253, 254), 9, kBorder);
         const int savedDc = SaveDC(dc);
         IntersectClipRect(dc, visualViewport_.left + 1, visualViewport_.top + 1,
                          visualViewport_.right - 1, visualViewport_.bottom - 1);
         if (scenario_ == ScenarioKind::Satellite) drawSatellite(dc, visualViewport_);
-        else drawRocket(dc, visualViewport_);
+        else if (scenario_ == ScenarioKind::Rocket) drawRocket(dc, visualViewport_);
+        else drawRecovery(dc, visualViewport_);
         RestoreDC(dc, savedDc);
         drawMetrics(dc, rect);
     }
@@ -1293,9 +1556,9 @@ private:
         radius = std::max(2, radius);
         for (int current = radius; current > 0; current -= std::max(1, radius / 30)) {
             const double t = static_cast<double>(current) / radius;
-            const COLORREF color = RGB(static_cast<int>(8 + 13 * (1.0 - t)),
-                                       static_cast<int>(42 + 64 * (1.0 - t)),
-                                       static_cast<int>(82 + 88 * (1.0 - t)));
+            const COLORREF color = RGB(static_cast<int>(47 + 60 * (1.0 - t)),
+                                       static_cast<int>(128 + 57 * (1.0 - t)),
+                                       static_cast<int>(190 + 43 * (1.0 - t)));
             HBRUSH brush = CreateSolidBrush(color);
             HPEN noOutline = CreatePen(PS_NULL, 0, color);
             const HGDIOBJ oldBrush = SelectObject(dc, brush);
@@ -1315,7 +1578,7 @@ private:
         for (int i = 0; i < 58; ++i) {
             const int x = viewport.left + 7 + (i * 97 + i * i * 13) % (width - 14);
             const int y = viewport.top + 7 + (i * 53 + i * i * 7) % (height - 14);
-            SetPixel(dc, x, y, i % 7 == 0 ? RGB(105, 154, 177) : RGB(43, 70, 85));
+            SetPixel(dc, x, y, i % 7 == 0 ? RGB(177, 199, 211) : RGB(221, 231, 236));
         }
     }
 
@@ -1399,18 +1662,21 @@ private:
         }
         drawText(dc, L"左键旋转 · 滚轮缩放 · 右键平移 · 双击重置 / L-drag rotate · Wheel zoom · R-drag pan · Double-click reset",
                  {viewport.left + 12, viewport.top + 7, viewport.right - 12, viewport.top + 25}, fontTiny_, kMuted);
-        drawText(dc, L"绿色实轨 / Green actual · 灰虚线名义轨道 / Dashed nominal · 紫色轨控推力 / Purple orbit thrust",
+        drawText(dc, gnc::gui::tr(L"绿色实轨 · 灰色虚线名义轨道 · 紫色轨控推力",
+                                   L"Green actual · Dashed nominal · Purple orbit thrust"),
                  {viewport.left + 12, viewport.top + 24, viewport.right - 12, viewport.top + 43}, fontTiny_, kMuted);
         const double perigeeKm = actualElements.semiMajorAxisKm * (1.0 - actualElements.eccentricity)
                                - gnc::kEarthEquatorialRadiusM / 1000.0;
         const double apogeeKm = actualElements.semiMajorAxisKm * (1.0 + actualElements.eccentricity)
                               - gnc::kEarthEquatorialRadiusM / 1000.0;
-        drawText(dc, L"高度 / ALT " + number(sample().altitude / 1000.0, 2) + L" km · 轨差 / Δr "
-                 + number(sample().positionError, 2) + L" m · 指向 / Δatt "
-                 + number(attitudeErrorDeg(sample()), 3) + L"°",
+        drawText(dc, gnc::gui::tr(L"高度 ", L"ALT ") + number(sample().altitude / 1000.0, 2)
+                 + L" km · " + gnc::gui::tr(L"轨差 ", L"Δr ")
+                 + number(sample().positionError, 2) + L" m · "
+                 + gnc::gui::tr(L"指向 ", L"Δatt ") + number(attitudeErrorDeg(sample()), 3) + L"°",
                  {viewport.left + 12, viewport.bottom - 44, viewport.right - 12, viewport.bottom - 25},
                  fontMono_, kText);
-        drawText(dc, L"实轨 / Actual: a " + number(actualElements.semiMajorAxisKm, 1) + L" km · e "
+        drawText(dc, gnc::gui::tr(L"实轨：a ", L"Actual: a ")
+                 + number(actualElements.semiMajorAxisKm, 1) + L" km · e "
                  + compact(actualElements.eccentricity, 4) + L" · 近/远地点 Pe/Ap "
                  + number(perigeeKm, 1) + L" / " + number(apogeeKm, 1) + L" km",
                  {viewport.left + 12, viewport.bottom - 25, viewport.right - 12, viewport.bottom - 5},
@@ -1544,7 +1810,8 @@ private:
         drawText(dc, L"左键旋转 · 滚轮缩放 · 右键平移 · 双击重置 / L-drag rotate · Wheel zoom · R-drag pan · Double-click reset",
                  {viewport.left + 12, viewport.top + 7, viewport.right - 12, viewport.top + 25},
                  fontTiny_, kMuted);
-        drawText(dc, L"紫虚线上升标称 / Purple nominal ascent · 绿色实际 / Green actual · 灰虚线目标轨道 / Dashed target orbit",
+        drawText(dc, gnc::gui::tr(L"紫色虚线上升标称 · 绿色实际 · 灰色虚线目标轨道",
+                                   L"Purple nominal ascent · Green actual · Dashed target orbit"),
                  {viewport.left + 12, viewport.top + 24, viewport.right - 12, viewport.top + 43},
                  fontTiny_, kMuted);
         const std::wstring phase = sample().orbitalCoast ? L"轨道滑行 / Orbital coast"
@@ -1559,15 +1826,17 @@ private:
                                  - gnc::kEarthEquatorialRadiusM / 1000.0;
             const double apogee = actualElements.semiMajorAxisKm * (1.0 + actualElements.eccentricity)
                                 - gnc::kEarthEquatorialRadiusM / 1000.0;
-            drawText(dc, L"实际轨道 / Actual: a " + number(actualElements.semiMajorAxisKm, 1)
+            drawText(dc, gnc::gui::tr(L"实际轨道：a ", L"Actual orbit: a ")
+                     + number(actualElements.semiMajorAxisKm, 1)
                      + L" km · e " + compact(actualElements.eccentricity, 4) + L" · i "
                      + number(actualElements.inclinationDeg, 2) + L"° · Pe/Ap "
                      + number(perigee, 1) + L" / " + number(apogee, 1) + L" km",
                      {viewport.left + 12, viewport.bottom - 25, viewport.right - 12, viewport.bottom - 5},
                      fontTiny_, kAccent);
         } else {
-            drawText(dc, L"高度 / ALT " + number(sample().altitude / 1000.0, 2)
-                     + L" km · 速度 / V " + number(sample().speed / 1000.0, 3) + L" km/s",
+            drawText(dc, gnc::gui::tr(L"高度 ", L"ALT ") + number(sample().altitude / 1000.0, 2)
+                     + L" km · " + gnc::gui::tr(L"速度 ", L"V ")
+                     + number(sample().speed / 1000.0, 3) + L" km/s",
                      {viewport.left + 12, viewport.bottom - 25, viewport.right - 12, viewport.bottom - 5},
                      fontTiny_, kText);
         }
@@ -1670,7 +1939,8 @@ private:
         }
         drawText(dc, L"左键旋转 · 滚轮缩放 · 右键平移 · 双击重置 / L-drag rotate · Wheel zoom · R-drag pan · Double-click reset",
                  {viewport.left + 12, viewport.top + 7, viewport.right - 12, viewport.top + 25}, fontTiny_, kMuted);
-        drawText(dc, L"虚线标称 / Dashed nominal · 绿色实际 / Green actual · 黄色误差 / Amber error",
+        drawText(dc, gnc::gui::tr(L"虚线标称 · 绿色实际 · 黄色误差",
+                                   L"Dashed nominal · Green actual · Amber error"),
                  {viewport.left + 12, viewport.top + 24, viewport.right - 12, viewport.top + 43}, fontTiny_, kMuted);
         const std::wstring phase = sample().orbitalCoast ? L"轨道滑行 / Orbital coast"
             : (sample().terminalGuidanceActive ? L"终端轨道制导 / Terminal orbit guidance"
@@ -1681,10 +1951,120 @@ private:
                  fontMono_, sample().orbitalCoast ? kPurple : kText);
         const SimulationSample& tracking = sample().ascentTrackingActive || !rocket_.hasInsertionSnapshot()
             ? sample() : rocket_.insertionSample();
-        drawText(dc, std::wstring(sample().orbitalCoast ? L"入轨冻结 / Frozen at insertion · " : L"")
-                 + L"位置 / Δr " + number(tracking.positionError, 1) + L" m · 横向 / Cross "
-                 + number(tracking.crossTrackError, 1) + L" m · 高度 / Δh " + number(tracking.altitudeError, 1)
-                 + L" m · 姿态 / Δatt " + number(attitudeErrorDeg(tracking), 3) + L"°",
+        drawText(dc, std::wstring(sample().orbitalCoast
+                     ? gnc::gui::tr(L"入轨冻结 · ", L"Frozen at insertion · ") : L"")
+                 + gnc::gui::tr(L"位置 ", L"Δr ") + number(tracking.positionError, 1)
+                 + L" m · " + gnc::gui::tr(L"横向 ", L"Cross ")
+                 + number(tracking.crossTrackError, 1) + L" m · "
+                 + gnc::gui::tr(L"高度 ", L"Δh ") + number(tracking.altitudeError, 1)
+                 + L" m · " + gnc::gui::tr(L"姿态 ", L"Δatt ")
+                 + number(attitudeErrorDeg(tracking), 3) + L"°",
+                 {viewport.left + 12, viewport.bottom - 25, viewport.right - 12, viewport.bottom - 5},
+                 fontTiny_, kText);
+    }
+
+    void drawRecovery(HDC dc, const RECT& viewport) {
+        drawStars(dc, viewport);
+        double horizontalMax = 1000.0;
+        double altitudeMax = 1000.0;
+        for (const auto& point : history()) {
+            horizontalMax = std::max(horizontalMax,
+                std::hypot(point.positionNed.x, point.positionNed.y));
+            altitudeMax = std::max(altitudeMax, std::max(0.0, -point.positionNed.z));
+        }
+        horizontalMax = std::max(horizontalMax,
+            std::hypot(sample().predictedLandingErrorNed.x, sample().predictedLandingErrorNed.y));
+        const double scale = std::min(viewport.right - viewport.left,
+                                      viewport.bottom - viewport.top) * 0.40;
+        POINT center{(viewport.left + viewport.right) / 2, viewport.bottom - 45};
+        gnc::Vec3 offset{};
+        if (followCraft_) {
+            offset = {sample().positionNed.x / horizontalMax,
+                      sample().positionNed.y / horizontalMax,
+                      -sample().positionNed.z / altitudeMax};
+            center = {(viewport.left + viewport.right) / 2,
+                      (viewport.top + viewport.bottom) / 2};
+        }
+        const auto project = [&](const gnc::Vec3& ned) {
+            const gnc::Vec3 normalized{ned.x / horizontalMax, ned.y / horizontalMax,
+                                        -ned.z / altitudeMax};
+            return project3d(normalized - offset, viewport, scale, center);
+        };
+        HPEN groundPen = CreatePen(PS_DOT, 1, RGB(181, 203, 207));
+        HGDIOBJ oldGroundPen = SelectObject(dc, groundPen);
+        HGDIOBJ oldGroundBrush = SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
+        for (int ring = 1; ring <= 4; ++ring) {
+            const int radius = static_cast<int>(scale * ring / 5.0 * camera_.zoom);
+            const POINT pad = project({});
+            Ellipse(dc, pad.x - radius, pad.y - std::max(2, radius / 5),
+                    pad.x + radius, pad.y + std::max(2, radius / 5));
+        }
+        SelectObject(dc, oldGroundBrush);
+        SelectObject(dc, oldGroundPen);
+        DeleteObject(groundPen);
+        std::vector<POINT> actual;
+        const std::size_t stride = std::max<std::size_t>(1, history().size() / 1200);
+        for (std::size_t i = 0; i < history().size(); i += stride) {
+            actual.push_back(project(history()[i].positionNed));
+        }
+        if (!history().empty() && (history().size() - 1) % stride != 0) {
+            actual.push_back(project(history().back().positionNed));
+        }
+        HPEN pathPen = CreatePen(PS_SOLID, 2, kAccent);
+        HGDIOBJ oldPen = SelectObject(dc, pathPen);
+        if (actual.size() > 1) Polyline(dc, actual.data(), static_cast<int>(actual.size()));
+        SelectObject(dc, oldPen);
+        DeleteObject(pathPen);
+
+        const POINT pad = project({});
+        line(dc, pad.x - 9, pad.y, pad.x + 9, pad.y, kCyan, 3);
+        line(dc, pad.x, pad.y - 9, pad.x, pad.y + 9, kCyan, 3);
+        const gnc::Vec3 predictedNed{sample().predictedLandingErrorNed.x,
+                                     sample().predictedLandingErrorNed.y, 0.0};
+        const POINT predicted = project(predictedNed);
+        line(dc, pad.x, pad.y, predicted.x, predicted.y, kAmber, 1, PS_DOT);
+        HBRUSH predictedBrush = CreateSolidBrush(kAmber);
+        HGDIOBJ oldBrush = SelectObject(dc, predictedBrush);
+        Ellipse(dc, predicted.x - 4, predicted.y - 4, predicted.x + 5, predicted.y + 5);
+        SelectObject(dc, oldBrush);
+        DeleteObject(predictedBrush);
+
+        const POINT craft = project(sample().positionNed);
+        POINT body[5]{{craft.x, craft.y - 18}, {craft.x + 5, craft.y - 6},
+                      {craft.x + 5, craft.y + 16}, {craft.x - 5, craft.y + 16},
+                      {craft.x - 5, craft.y - 6}};
+        HBRUSH bodyBrush = CreateSolidBrush(RGB(222, 231, 234));
+        HPEN bodyPen = CreatePen(PS_SOLID, 1, RGB(250, 252, 252));
+        oldBrush = SelectObject(dc, bodyBrush);
+        oldPen = SelectObject(dc, bodyPen);
+        Polygon(dc, body, 5);
+        SelectObject(dc, oldPen);
+        SelectObject(dc, oldBrush);
+        DeleteObject(bodyPen);
+        DeleteObject(bodyBrush);
+        if (sample().thrust > 1.0) {
+            line(dc, craft.x, craft.y + 16, craft.x, craft.y + 43, kAmber, 4);
+        }
+        drawText(dc, L"左键旋转 · 滚轮缩放 · 右键平移 · 双击重置 / L-drag rotate · Wheel zoom · R-drag pan · Double-click reset",
+                 {viewport.left + 12, viewport.top + 7, viewport.right - 12, viewport.top + 25},
+                 fontTiny_, kMuted);
+        drawText(dc, gnc::gui::tr(L"绿色实际轨迹 · 青色着陆点 · 黄色预测落点",
+                                   L"Green actual · Cyan pad · Amber prediction"),
+                 {viewport.left + 12, viewport.top + 24, viewport.right - 12, viewport.top + 43},
+                 fontTiny_, kMuted);
+        const gnc::RecoveryPhase phase = static_cast<gnc::RecoveryPhase>(sample().recoveryPhase);
+        drawText(dc, gnc::gui::tr(L"当前阶段：", L"CURRENT PHASE: ")
+                 + gnc::gui::localizeBilingual(gnc::recoveryPhaseBilingual(phase)),
+                 {viewport.left + 12, viewport.bottom - 44, viewport.right - 12, viewport.bottom - 25},
+                 fontMono_, phase == gnc::RecoveryPhase::Failed ? kRed
+                           : (phase == gnc::RecoveryPhase::Touchdown ? kAccent : kText));
+        const double predictedError = std::hypot(sample().predictedLandingErrorNed.x,
+                                                 sample().predictedLandingErrorNed.y);
+        drawText(dc, gnc::gui::tr(L"高度 ", L"ALT ") + number(sample().altitude, 1)
+                 + L" m · " + gnc::gui::tr(L"地面距离 ", L"Range ")
+                 + number(sample().groundDistance, 1) + L" m · "
+                 + gnc::gui::tr(L"预测落点误差 ", L"Pred. error ")
+                 + number(predictedError, 1) + L" m",
                  {viewport.left + 12, viewport.bottom - 25, viewport.right - 12, viewport.bottom - 5},
                  fontTiny_, kText);
     }
@@ -1723,6 +2103,27 @@ private:
             }
             }
         }
+        if (scenario_ == ScenarioKind::Recovery) {
+            const double predictedError = std::hypot(s.predictedLandingErrorNed.x,
+                                                     s.predictedLandingErrorNed.y);
+            double maximumFin{};
+            for (double fin : s.gridFinDeflectionDeg) maximumFin = std::max(maximumFin, std::abs(fin));
+            switch (selection) {
+            case 0: return {s.altitude / 1000.0, s.groundDistance / 1000.0, true};
+            case 1: return {s.horizontalVelocity, s.verticalVelocity, true};
+            case 2: return {s.landingError, predictedError, true};
+            case 3: return {s.thrust / 1000.0, 0.0, false};
+            case 4: return {s.propellantRemaining / 1000.0, 0.0, false};
+            case 5: return {s.tvcPitchDeg, s.tvcYawDeg, true};
+            case 6: return {maximumFin, 0.0, false};
+            case 7: return {attitudeErrorDeg(s), 0.0, false};
+            case 8: return {s.dynamicPressure / 1000.0, 0.0, false};
+            case 9: return {s.altitude, s.brakingDistance, true};
+            case 10: return {s.optimizerSolveTimeMs, 0.0, false};
+            case 11: return {s.optimizerSuccessRate * 100.0, 0.0, false};
+            default: return {static_cast<double>(s.recoveryPhase), 0.0, false};
+            }
+        }
         switch (selection) {
         case 0: return {s.nominalAltitude / 1000.0, s.altitude / 1000.0, true};
         case 1: return {s.nominalSpeed / 1000.0, s.speed / 1000.0, true};
@@ -1754,7 +2155,7 @@ private:
     }
 
     bool plotApplicable(const SimulationSample& s, int selection) const {
-        if (scenario_ == ScenarioKind::Satellite) return true;
+        if (scenario_ != ScenarioKind::Rocket) return true;
         const bool ascentTracking = selection == 0 || selection == 1 || selection == 2
                                  || selection == 3 || selection == 9 || selection == 10
                                  || selection == 15 || selection == 16;
@@ -1771,6 +2172,9 @@ private:
             default:
                 return true;
             }
+        }
+        if (scenario_ == ScenarioKind::Recovery) {
+            return selection != 1 && selection != 5;
         }
         switch (selection) {
         case 0: case 1: case 3: case 4: case 5: case 7: case 8: case 9:
@@ -1797,6 +2201,12 @@ private:
                 L"km", L"m", L"m", L"m", L"m/s", L"N", L"kg", L"m/s",
                 L"kJ/kg", L"km", L"", L"deg"};
             return units[std::clamp(selection, 0, 19)];
+        }
+        if (scenario_ == ScenarioKind::Recovery) {
+            const std::array<const wchar_t*, 13> units{
+                L"km", L"m/s", L"m", L"kN", L"t", L"deg", L"deg",
+                L"deg", L"kPa", L"m", L"ms", L"%", L""};
+            return units[std::clamp(selection, 0, 12)];
         }
         const std::array<const wchar_t*, 19> units{L"km", L"km/s", L"deg", L"deg", L"deg/s", L"kN·m",
                                                    L"deg", L"t", L"kPa", L"m", L"m", L"km",
@@ -1906,7 +2316,8 @@ private:
         const SeriesPoint current = plotValue(*latest, selection);
         const bool frozen = scenario_ == ScenarioKind::Rocket && sample().orbitalCoast
                          && !plotApplicable(sample(), selection);
-        const std::wstring legend = (frozen ? L"入轨冻结 / Frozen at insertion  " : L"当前 / Now ")
+        const std::wstring legend = (frozen ? gnc::gui::tr(L"入轨冻结  ", L"Frozen at insertion  ")
+                                            : gnc::gui::tr(L"当前 ", L"Now "))
             + compact(current.first, 3)
             + (current.dual && std::isfinite(current.second) ? L"  /  " + compact(current.second, 3) : L"")
             + (plotUnit(selection).empty() ? L"" : L" " + plotUnit(selection));
@@ -1917,7 +2328,8 @@ private:
     void drawMetrics(HDC dc, const RECT& rect) {
         const auto m = metrics();
         const bool controlOff = (scenario_ == ScenarioKind::Satellite ? satelliteConfig_.control.mode
-                                                                       : rocketConfig_.control.mode)
+            : (scenario_ == ScenarioKind::Rocket ? rocketConfig_.control.mode
+                                                 : recoveryConfig_.attitudeControl.mode))
                               == gnc::ControlMode::Off;
         std::vector<std::pair<std::wstring, std::wstring>> values;
         if (scenario_ == ScenarioKind::Satellite) {
@@ -1936,7 +2348,7 @@ private:
                        {L"累计速度增量 / Cumulative delta-v", number(m.cumulativeDeltaVMps, 4) + L" m/s"},
                        {L"剩余推进剂 / Propellant remaining", number(sample().propellantRemaining, 4) + L" kg"},
                        {L"轨道控制状态 / Orbit-control status", orbitStatus}};
-        } else {
+        } else if (scenario_ == ScenarioKind::Rocket) {
             const bool inserted = rocket_.hasInsertionSnapshot();
             const auto insertionValue = [&](double value, int precision, const wchar_t* unit) {
                 return inserted ? number(value, precision) + unit : std::wstring(L"待入轨 / Pending");
@@ -1965,6 +2377,40 @@ private:
                                  : (sample().orbitalCoast ? L"入轨关机 / Cutoff" : L"待机 / Standby")))},
                        {L"剩余推进剂 / Propellant remaining",
                            number(sample().propellantRemaining / 1000.0, 3) + L" t"}};
+        } else {
+            const gnc::RecoveryMetrics recoveryMetrics = recovery_.metrics();
+            const auto solverStatus = static_cast<gnc::RecoverySolverStatus>(sample().optimizerStatus);
+            std::wstring solverValue = number(recoveryMetrics.solverSuccessRate * 100.0, 1)
+                                     + L"% · " + gnc::gui::localizeBilingual(
+                                         gnc::recoverySolverStatusBilingual(solverStatus));
+            if (recoveryMetrics.finalPhase == gnc::RecoveryPhase::Failed
+                && !recoveryMetrics.failureReason.empty()) {
+                solverValue = gnc::gui::tr(L"失败 · ", L"FAILED · ")
+                            + gnc::gui::localizeBilingual(recoveryMetrics.failureReason);
+            }
+            values = {{L"着陆点误差 / Landing position error",
+                           number(recoveryMetrics.landingPositionErrorM, 3) + L" m"},
+                      {L"水平着陆速度 / Horizontal touchdown velocity",
+                           number(recoveryMetrics.horizontalTouchdownVelocityMps, 3) + L" m/s"},
+                      {L"垂直着陆速度 / Vertical touchdown velocity",
+                           number(recoveryMetrics.verticalTouchdownVelocityMps, 3) + L" m/s"},
+                      {L"着陆倾角 / Touchdown tilt",
+                           number(recoveryMetrics.touchdownTiltDeg, 3) + L"°"},
+                      {L"回收耗油 / Propellant consumed",
+                           number(recoveryMetrics.propellantConsumedKg, 1) + L" kg"},
+                      {L"最大姿态误差 / Max attitude error",
+                           number(recoveryMetrics.maxAttitudeErrorDeg, 3) + L"°"},
+                      {L"最大 TVC 偏角 / Max TVC angle",
+                           number(recoveryMetrics.maxTvcAngleDeg, 3) + L"°"},
+                      {L"最大栅格舵偏角 / Max grid-fin deflection",
+                           number(recoveryMetrics.maxGridFinDeflectionDeg, 3) + L"°"},
+                      {L"回收总时间 / Recovery duration",
+                           number(recoveryMetrics.recoveryDurationSec, 2) + L" s"},
+                      {L"平均优化耗时 / Mean optimizer time",
+                           number(recoveryMetrics.meanOptimizerSolveTimeMs, 3) + L" ms"},
+                      {L"最大优化耗时 / Max optimizer time",
+                           number(recoveryMetrics.maxOptimizerSolveTimeMs, 3) + L" ms"},
+                      {L"求解成功率 / Solver success rate", solverValue}};
         }
         const int width = (rect.right - rect.left - 30) / 4;
         const int rows = (static_cast<int>(values.size()) + 3) / 4;
@@ -1975,18 +2421,11 @@ private:
             const int column = i % 4;
             const int x = rect.left + 10 + column * width;
             const int y = firstTop + row * blockHeight;
-            const std::size_t separator = values[i].first.find(L" / ");
-            const std::wstring chinese = separator == std::wstring::npos
-                ? values[i].first : values[i].first.substr(0, separator);
-            const std::wstring english = separator == std::wstring::npos
-                ? L"" : values[i].first.substr(separator + 3);
-            drawText(dc, chinese, {x, y, x + width - 6, y + 14}, fontTiny_, kMuted,
-                     DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-            drawText(dc, english, {x, y + 12, x + width - 6, y + 27}, fontTiny_, kMuted,
+            drawText(dc, values[i].first, {x, y + 5, x + width - 6, y + 25}, fontTiny_, kMuted,
                      DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             const std::size_t valueBreak = values[i].second.find(L'\n');
             if (valueBreak == std::wstring::npos) {
-                drawText(dc, values[i].second, {x, y + 28, x + width - 6, y + 54}, fontMono_,
+                drawText(dc, values[i].second, {x, y + 25, x + width - 6, y + 54}, fontMono_,
                          m.saturated && i == 3 ? kAmber : kText,
                          DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             } else {
@@ -2002,32 +2441,42 @@ private:
 
     void drawParameterPanel(HDC dc, const RECT& client) {
         const int top = bottomTop(client.bottom);
-        fillSolid(dc, {0, top, client.right, client.bottom}, RGB(7, 15, 23));
+        fillSolid(dc, {0, top, client.right, client.bottom}, kPanel);
         line(dc, 0, top, client.right, top, kBorder);
         drawText(dc, scenario_ == ScenarioKind::Satellite
             ? L"卫星任务与模型参数 / Satellite Mission & Model Parameters"
-            : L"火箭真值模型偏差 / Launch Vehicle Truth-model Deviations",
+            : (scenario_ == ScenarioKind::Rocket
+                ? L"火箭真值模型偏差 / Launch Vehicle Truth-model Deviations"
+                : L"一级回收初始状态、环境与在线制导参数 / Recovery State, Environment & Guidance"),
             {24, top + 7, 555, top + 34}, fontMedium_, kText);
         drawText(dc, statusText(), {client.right - 300, top + 7, client.right - 24, top + 34}, fontMedium_,
                  runState_ == RunState::Completed ? kAccent : (runState_ == RunState::Paused ? kAmber : kCyan),
                  DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
         if (scenario_ == ScenarioKind::Satellite) {
             drawText(dc, L"姿态目标 / Attitude objective", {24, top + 39, 215, top + 68}, fontSmall_, kMuted);
-        } else {
+        } else if (scenario_ == ScenarioKind::Rocket) {
             drawText(dc, L"发射场 / Launch site", {24, top + 39, 180, top + 68}, fontSmall_, kMuted);
             drawText(dc, L"固定目标轨道 / Fixed target orbit", {438, top + 39, 530, top + 68}, fontSmall_, kMuted,
                      DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
             if (rocketConfig_.mission) {
                 const auto& s = rocketConfig_.mission->summary;
-                const std::wstring nominal = L"标称只读 / Nominal read-only: 湿质量 Wet mass "
-                    + number(s.nominalWetMassKg() / 1000.0, 1) + L" t · 一级推力 S1 thrust "
-                    + number(s.stage1ThrustN / 1000.0, 0) + L" kN · 二级推力 S2 thrust "
-                    + number(s.stage2ThrustN / 1000.0, 0) + L" kN · 最大 TVC Max TVC "
-                    + number(s.maxTvcAngleDeg, 1) + L"° · 标称末端 Nominal end "
+                const std::wstring nominal = gnc::gui::tr(L"标称只读：湿质量 ", L"Nominal read-only: Wet mass ")
+                    + number(s.nominalWetMassKg() / 1000.0, 1) + L" t · "
+                    + gnc::gui::tr(L"一级推力 ", L"S1 thrust ")
+                    + number(s.stage1ThrustN / 1000.0, 0) + L" kN · "
+                    + gnc::gui::tr(L"二级推力 ", L"S2 thrust ")
+                    + number(s.stage2ThrustN / 1000.0, 0) + L" kN · "
+                    + gnc::gui::tr(L"最大 TVC ", L"Max TVC ")
+                    + number(s.maxTvcAngleDeg, 1) + L"° · "
+                    + gnc::gui::tr(L"标称末端 ", L"Nominal end ")
                     + number(rocketConfig_.mission->endTimeSec(), 1) + L" s";
                 drawText(dc, nominal, {600, top + 7, client.right - 315, top + 34}, fontTiny_, kAccent,
                          DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
             }
+        } else {
+            drawText(dc, L"默认配置可直接完成 RTLS；编辑下方字段即为自定义配置 / Default runs RTLS; edit fields for Custom",
+                     {575, top + 7, client.right - 315, top + 34}, fontTiny_, kAccent,
+                     DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         }
         drawText(dc, L"播放速度 / Playback", {client.right - 380, top + 39, client.right - 212, top + 68},
                  fontSmall_, kMuted, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
@@ -2046,7 +2495,8 @@ private:
         }
         drawText(dc, validationText_, {24, client.bottom - 35, client.right / 2, client.bottom - 10},
                  fontSmall_, std::any_of(invalid_.begin(), invalid_.end(), [](bool v) { return v; }) ? kRed : kMuted);
-        drawText(dc, L"固定物理步长 0.02 s / Fixed physics step · SI 内核 / SI core · RK4 · 参数在开始时生效 / Applied on Start",
+        drawText(dc, gnc::gui::tr(L"固定物理步长 0.02 s · SI 内核 · RK4 · 参数在开始时生效",
+                                   L"Fixed physics step 0.02 s · SI core · RK4 · Applied on Start"),
                  {client.right / 2, client.bottom - 35, client.right - 24, client.bottom - 10}, fontTiny_, kMuted,
                  DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
     }
@@ -2075,8 +2525,10 @@ private:
     gnc::MissionRepository missions_{};
     gnc::SatelliteConfig satelliteConfig_{};
     gnc::RocketMissionConfig rocketConfig_{};
+    gnc::RecoveryConfiguration recoveryConfig_{gnc::makeDefaultRecoveryConfiguration()};
     gnc::SatelliteSimulation satellite_;
     gnc::RocketMissionSimulation rocket_;
+    gnc::RecoverySimulation recovery_;
     ScenarioKind scenario_{ScenarioKind::Satellite};
     RunState runState_{RunState::Ready};
     std::array<bool, kFieldCount> warning_{};
@@ -2088,6 +2540,7 @@ private:
     bool rocketGlobalView_{};
     bool followCraft_{};
     bool coastAutoSwitched_{};
+    bool maxPlayback_{};
     bool cameraDragging_{};
     bool cameraPanning_{};
     int cameraMode_{};

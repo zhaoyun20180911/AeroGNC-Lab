@@ -22,7 +22,7 @@ $textBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromA
 $titleFont = New-Object System.Drawing.Font 'Microsoft YaHei UI', 25, ([System.Drawing.FontStyle]::Bold)
 $labelFont = New-Object System.Drawing.Font 'Microsoft YaHei UI', 16, ([System.Drawing.FontStyle]::Bold)
 $graphics.Clear($background)
-$graphics.DrawString('AeroGNC Lab v3.2 | Control & Simulation Settings',
+$graphics.DrawString('AeroSys Lab v4.1 | Control & Simulation Settings',
     $titleFont, $textBrush, 40, 24)
 
 function Draw-PanelImage {
