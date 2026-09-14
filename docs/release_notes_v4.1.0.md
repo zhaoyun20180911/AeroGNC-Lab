@@ -1,6 +1,12 @@
 # AeroSys Lab v4.1.0
 
-本地功能版本，未上传 GitHub。
+正式发布于 2026-09-14。
+
+## 下载方式
+
+- **单文件 EXE（推荐）**：`AeroSys_Lab_v4.1_Windows_x64.exe`，适合绝大多数用户，下载后直接双击运行。
+- **本地免安装部署包**：`AeroSys_Lab_v4.1_Windows_x64_Portable.zip`，内含 EXE、运行说明和 SHA-256 校验文件，适合归档、校验和本地分发。
+- 两种产物功能相同，均不要求安装 Visual Studio、CMake 或 Microsoft Visual C++ 运行库。
 
 ## 新功能
 
@@ -19,3 +25,5 @@
 - `recovery_tests`：六组标准工况全部通过完整状态序列并满足安全 TOUCHDOWN 门槛。
 - 80 km 默认状态下，组合扰动工况落点误差约 0.023 m、垂直触地速度约 0.118 m/s。
 - 输出文件：`build/Release/AeroSysLab.exe`。
+- 单文件 EXE SHA-256：`F0800FDB1DD14C285C309BF1CFC234DBDDFE93E6988C5B9C9BD7BC8843E3C655`。
+- Portable ZIP SHA-256：`53D2E2A9ED760B223E10DA4F7064AF7716E59E0AF7FB7C73D039057FA4967AD9`。

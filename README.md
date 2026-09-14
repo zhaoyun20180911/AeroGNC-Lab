@@ -10,6 +10,22 @@
 - 全软件重新设计为白底深色文字界面，顶部提供“中文 / English”开关；按钮、参数、曲线、指标、提示和设置弹窗均按当前模式单语显示。
 - 保留并扩展卫星姿轨控与火箭上升入轨功能，完整 Release 回归测试全部通过。
 
+## 下载 v4.1（Windows x64）
+
+### 方式一：直接下载单文件 EXE（推荐）
+
+这是绝大多数用户应选择的版本。无需安装 Visual Studio、CMake 或 Microsoft Visual C++ 运行库，下载后直接双击即可运行：
+
+**[下载 AeroSys Lab v4.1 单文件 EXE](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v4.1.0/AeroSys_Lab_v4.1_Windows_x64.exe)**
+
+### 方式二：下载本地免安装部署包
+
+适合需要在本地保存完整说明、校验文件或复制到其他 Windows 计算机的用户。ZIP 内含同一版本的 EXE、运行说明和 SHA-256 校验文件：
+
+**[下载 AeroSys Lab v4.1 Portable ZIP](https://github.com/zhaoyun20180911/AeroGNC-Lab/releases/download/v4.1.0/AeroSys_Lab_v4.1_Windows_x64_Portable.zip)**
+
+两种下载包含相同的软件功能，均为 Windows 10/11 x64 免安装版本。单文件 EXE 最方便；Portable ZIP 更适合归档、校验和本地分发。需要查看或修改源代码的开发者可使用 GitHub 的“Code → Download ZIP”或克隆本仓库。
+
 AeroSys Lab 是使用 C++20 与原生 Win32/GDI 构建的 GNC 与动力学仿真平台。v4.1 采用白底深色文字界面，顶部“中文 / English”开关可在中文单语与英文单语之间即时切换，所有按钮、参数、下拉项、曲线、指标、提示和设置弹窗随模式同步刷新。软件包含三个彼此并列的顶层模块：
 
 - **卫星姿轨控**：四类姿态任务、PD/PID/LQR、反作用飞轮、轨道保持、摄动与扰动仿真；
