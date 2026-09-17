@@ -37,9 +37,23 @@ int main() {
         gnc::gui::setUiLanguage(gnc::gui::UiLanguage::Chinese);
         require(gnc::gui::localizeBilingual(L"姿态控制 / Attitude Control") == L"姿态控制",
                 "Chinese UI localization");
+        require(gnc::gui::localizeBilingual(L"半长轴 / Semi-major axis (km)")
+                    == L"半长轴 (km)",
+                "Chinese UI preserves field units");
+        require(gnc::gui::localizeBilingual(
+                    L"积分 Ki (N·m/(rad·s)) / Integral Ki (N·m/(rad·s))")
+                    == L"积分 Ki (N·m/(rad·s))",
+                "Chinese UI does not duplicate nested units");
+        require(gnc::gui::localizeBilingual(
+                    L"偏心率（无量纲） / Eccentricity (dimensionless)")
+                    == L"偏心率（无量纲）",
+                "Chinese UI keeps localized dimensionless labels");
         gnc::gui::setUiLanguage(gnc::gui::UiLanguage::English);
         require(gnc::gui::localizeBilingual(L"姿态控制 / Attitude Control") == L"Attitude Control",
                 "English UI localization");
+        require(gnc::gui::localizeBilingual(L"半长轴 / Semi-major axis (km)")
+                    == L"Semi-major axis (km)",
+                "English UI preserves field units");
         require(gnc::gui::localizeBilingual(L"1.0 / 2.0") == L"1.0 / 2.0",
                 "numeric separator is not treated as bilingual UI");
         gnc::gui::setUiLanguage(gnc::gui::UiLanguage::Chinese);

@@ -301,8 +301,11 @@ protected:
         label(L"X 轴 / X", 230, 158, 130, 22, true);
         label(L"Y 轴 / Y", 380, 158, 130, 22, true);
         label(L"Z 轴 / Z", 530, 158, 130, 22, true);
-        const std::array<std::wstring, 4> names{L"比例 Kp / Proportional", L"积分 Ki / Integral",
-                                               L"微分 Kd / Derivative", L"积分限幅 / Integral limit"};
+        const std::array<std::wstring, 4> names{
+            L"比例 Kp (N·m/rad) / Proportional Kp (N·m/rad)",
+            L"积分 Ki (N·m/(rad·s)) / Integral Ki (N·m/(rad·s))",
+            L"微分 Kd (N·m·s/rad) / Derivative Kd (N·m·s/rad)",
+            L"积分限幅 (rad·s) / Integral limit (rad·s)"};
         for (int row = 0; row < 4; ++row) {
             gainLabels_[row] = label(names[row], 28, 190 + row * 48, 190, 25);
             const Vec3 source = row == 0 ? config_.proportionalGain : row == 1 ? config_.integralGain
@@ -316,9 +319,9 @@ protected:
                                 L"Default mode automatically uses the current recommended gains.\r\n\r\nSelect Custom to edit PD, PID, or LQR parameters."),
                              28, 195, 410, 115, true);
 
-        lqrLabels_[0] = label(L"姿态误差权重 / Attitude error weight", 28, 397, 285, 25);
-        lqrLabels_[1] = label(L"角速度权重 / Angular-rate weight", 28, 440, 285, 25);
-        lqrLabels_[2] = label(L"控制代价权重 / Control-effort weight", 28, 483, 285, 25);
+        lqrLabels_[0] = label(L"姿态误差权重（无量纲） / Attitude error weight (dimensionless)", 28, 397, 285, 25);
+        lqrLabels_[1] = label(L"角速度权重（无量纲） / Angular-rate weight (dimensionless)", 28, 440, 285, 25);
+        lqrLabels_[2] = label(L"控制代价权重（无量纲） / Control-effort weight (dimensionless)", 28, 483, 285, 25);
         lqrEdits_[0] = edit(config_.attitudeErrorWeight, 325, 394, 130, 240);
         lqrEdits_[1] = edit(config_.angularRateWeight, 325, 437, 130, 241);
         lqrEdits_[2] = edit(config_.controlEffortWeight, 325, 480, 130, 242);
@@ -394,10 +397,10 @@ private:
     void refreshRecommendationText() {
         std::wostringstream stream;
         stream << tr(L"当前飞行器推荐", L"Current recommendation") << L"\r\n\r\n"
-               << L"Kp  " << numberText(recommendation_.proportionalGain.x, 4) << L"  /  "
+               << L"Kp (N·m/rad)  " << numberText(recommendation_.proportionalGain.x, 4) << L"  /  "
                << numberText(recommendation_.proportionalGain.y, 4) << L"  /  "
                << numberText(recommendation_.proportionalGain.z, 4) << L"\r\n"
-               << L"Kd  " << numberText(recommendation_.derivativeGain.x, 4) << L"  /  "
+               << L"Kd (N·m·s/rad)  " << numberText(recommendation_.derivativeGain.x, 4) << L"  /  "
                << numberText(recommendation_.derivativeGain.y, 4) << L"  /  "
                << numberText(recommendation_.derivativeGain.z, 4) << L"\r\n\r\n"
                << tr(L"根据惯量和执行机构能力计算", L"Calculated from inertia and actuator authority");
@@ -621,7 +624,7 @@ private:
 
         checks_[1] = checkbox(L"脉冲扰动力矩 / Pulse torque", 28, 170, 265, 402,
                               satellite_.pulseEnabled);
-        rowLabels(172, {L"轴 / Axis", L"幅值 / Magnitude", L"开始 / Start s", L"持续 / Duration s"}, 300, 130);
+        rowLabels(172, {L"轴 / Axis", L"幅值 / Magnitude (N·m)", L"开始 / Start (s)", L"持续 / Duration (s)"}, 300, 130);
         combos_[0] = comboAxis(300, 196, 130, 420, axisSelection(satellite_.pulseAxis));
         edits_[3] = edit(satellite_.pulseMagnitudeNm, 440, 196, 130, 421);
         edits_[4] = edit(satellite_.pulseStartSec, 580, 196, 130, 422);
@@ -629,7 +632,7 @@ private:
 
         checks_[2] = checkbox(L"正弦扰动力矩 / Sine torque", 28, 260, 265, 403,
                               satellite_.sineEnabled);
-        rowLabels(262, {L"轴 / Axis", L"幅值 / Amplitude", L"频率 / Freq Hz", L"相位 / Phase deg"}, 300, 130);
+        rowLabels(262, {L"轴 / Axis", L"幅值 / Amplitude (N·m)", L"频率 / Freq (Hz)", L"相位 / Phase (deg)"}, 300, 130);
         combos_[1] = comboAxis(300, 286, 130, 430, axisSelection(satellite_.sineAxis));
         edits_[6] = edit(satellite_.sineAmplitudeNm, 440, 286, 130, 431);
         edits_[7] = edit(satellite_.sineFrequencyHz, 580, 286, 130, 432);
@@ -637,14 +640,14 @@ private:
 
         checks_[3] = checkbox(L"随机扰动力矩 / Random torque", 28, 350, 265, 404,
                               satellite_.randomEnabled);
-        rowLabels(352, {L"RMS  N·m", L"更新间隔 / Interval s", L"随机种子 / Seed"}, 300, 170);
+        rowLabels(352, {L"RMS (N·m)", L"更新间隔 / Interval (s)", L"随机种子（无量纲） / Seed (dimensionless)"}, 300, 170);
         edits_[9] = edit(satellite_.randomRmsNm, 300, 376, 160, 440);
         edits_[10] = edit(satellite_.randomUpdateIntervalSec, 480, 376, 160, 441);
         edits_[11] = edit(static_cast<double>(satellite_.randomSeed), 660, 376, 160, 442);
         checks_[4] = checkbox(L"轨道 Δv 脉冲 / Orbital Δv impulse", 28, 455, 265, 405,
                               satellite_.deltaVImpulseEnabled);
-        rowLabels(457, {L"径向 R / Radial", L"航向 T / Along-track",
-                        L"法向 N / Normal", L"时刻 / Time s"}, 300, 130);
+        rowLabels(457, {L"径向 R / Radial (m/s)", L"航向 T / Along-track (m/s)",
+                        L"法向 N / Normal (m/s)", L"时刻 / Time (s)"}, 300, 130);
         edits_[12] = edit(satellite_.deltaVImpulseRtnMps.x, 300, 482, 130, 443);
         edits_[13] = edit(satellite_.deltaVImpulseRtnMps.y, 440, 482, 130, 444);
         edits_[14] = edit(satellite_.deltaVImpulseRtnMps.z, 580, 482, 130, 445);
@@ -689,12 +692,12 @@ private:
     void buildRocket() {
         checks_[0] = checkbox(L"稳态横风 / Steady crosswind", 28, 76, 250, 451,
                               rocket_.steadyCrosswindEnabled);
-        rowLabels(78, {L"风速 / Speed m/s", L"方向 / Direction deg"}, 300, 180);
+        rowLabels(78, {L"风速 / Speed (m/s)", L"方向 / Direction (deg)"}, 300, 180);
         edits_[0] = edit(rocket_.crosswindSpeedMps, 300, 102, 170, 460);
         edits_[1] = edit(rocket_.crosswindDirectionDeg, 490, 102, 170, 461);
 
         checks_[1] = checkbox(L"阵风 / Gust", 28, 158, 250, 452, rocket_.gustEnabled);
-        rowLabels(160, {L"风速 / Speed", L"方向 / Direction", L"开始 / Start s", L"持续 / Duration s"}, 300, 130);
+        rowLabels(160, {L"风速 / Speed (m/s)", L"方向 / Direction (deg)", L"开始 / Start (s)", L"持续 / Duration (s)"}, 300, 130);
         edits_[2] = edit(rocket_.gustSpeedMps, 300, 184, 120, 462);
         edits_[3] = edit(rocket_.gustDirectionDeg, 440, 184, 120, 463);
         edits_[4] = edit(rocket_.gustStartSec, 580, 184, 120, 464);
@@ -702,7 +705,7 @@ private:
 
         checks_[2] = checkbox(L"脉冲外力 / Pulse force", 28, 240, 250, 453,
                               rocket_.pulseForceEnabled);
-        rowLabels(242, {L"方向 / Direction", L"幅值 / Magnitude N", L"开始 / Start s", L"持续 / Duration s"}, 300, 130);
+        rowLabels(242, {L"方向 / Direction", L"幅值 / Magnitude (N)", L"开始 / Start (s)", L"持续 / Duration (s)"}, 300, 130);
         combos_[0] = comboAxis(300, 266, 130, 470, axisSelection(rocket_.pulseForceDirectionEci));
         edits_[6] = edit(rocket_.pulseForceN, 440, 266, 130, 471);
         edits_[7] = edit(rocket_.pulseForceStartSec, 580, 266, 130, 472);
@@ -710,7 +713,7 @@ private:
 
         checks_[3] = checkbox(L"脉冲外力矩 / Pulse torque", 28, 322, 250, 454,
                               rocket_.pulseTorqueEnabled);
-        rowLabels(324, {L"轴 / Axis", L"幅值 / Magnitude N·m", L"开始 / Start s", L"持续 / Duration s"}, 300, 130);
+        rowLabels(324, {L"轴 / Axis", L"幅值 / Magnitude (N·m)", L"开始 / Start (s)", L"持续 / Duration (s)"}, 300, 130);
         combos_[1] = comboAxis(300, 348, 130, 480, axisSelection(rocket_.pulseTorqueAxisBody));
         edits_[9] = edit(rocket_.pulseTorqueNm, 440, 348, 130, 481);
         edits_[10] = edit(rocket_.pulseTorqueStartSec, 580, 348, 130, 482);
@@ -718,7 +721,7 @@ private:
 
         checks_[4] = checkbox(L"随机外扰 / Random disturbance", 28, 404, 260, 455,
                               rocket_.randomEnabled);
-        rowLabels(406, {L"力 RMS / Force N", L"力矩 RMS / Torque N·m", L"更新 / Interval s", L"种子 / Seed"}, 300, 130);
+        rowLabels(406, {L"力 RMS / Force (N)", L"力矩 RMS / Torque (N·m)", L"更新 / Interval (s)", L"种子（无量纲） / Seed (dimensionless)"}, 300, 130);
         edits_[12] = edit(rocket_.randomForceRmsN, 300, 430, 120, 490);
         edits_[13] = edit(rocket_.randomTorqueRmsNm, 440, 430, 120, 491);
         edits_[14] = edit(rocket_.randomUpdateIntervalSec, 580, 430, 120, 492);

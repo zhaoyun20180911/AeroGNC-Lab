@@ -566,15 +566,15 @@ private:
                              L"Valid: a > Earth radius. Suggested LEO: 6578–7378 km."),
                 gnc::gui::tr(L"合法：0 ≤ e < 1。建议实验范围：0–0.2。",
                              L"Valid: 0 ≤ e < 1. Suggested experiment: 0–0.2."),
-                L"合法范围 / Valid range: 0–180 deg.", L"角度输入 / Angular input: deg.",
-                L"角度输入 / Angular input: deg.", L"角度输入 / Angular input: deg.",
-                L"中小型卫星建议 / Small-to-medium satellite suggestion: 20–2000 kg.",
-                L"建议主惯量 / Suggested principal inertia: 0.1–5000 kg·m².",
-                L"建议主惯量 / Suggested principal inertia: 0.1–5000 kg·m².",
-                L"建议主惯量 / Suggested principal inertia: 0.1–5000 kg·m².",
-                L"建议飞轮惯量 / Suggested wheel inertia: 0.001–10 kg·m².",
-                L"建议飞轮力矩 / Suggested wheel torque: 0.01–2 N·m.",
-                L"建议飞轮转速 / Suggested wheel speed: 500–10000 rpm.",
+                L"合法范围：0–180 deg / Valid range: 0–180 deg.", L"角度输入：deg / Angular input: deg.",
+                L"角度输入：deg / Angular input: deg.", L"角度输入：deg / Angular input: deg.",
+                L"中小型卫星建议：20–2000 kg / Small-to-medium satellite suggestion: 20–2000 kg.",
+                L"建议主惯量：0.1–5000 kg·m² / Suggested principal inertia: 0.1–5000 kg·m².",
+                L"建议主惯量：0.1–5000 kg·m² / Suggested principal inertia: 0.1–5000 kg·m².",
+                L"建议主惯量：0.1–5000 kg·m² / Suggested principal inertia: 0.1–5000 kg·m².",
+                L"建议飞轮惯量：0.001–10 kg·m² / Suggested wheel inertia: 0.001–10 kg·m².",
+                L"建议飞轮力矩：0.01–2 N·m / Suggested wheel torque: 0.01–2 N·m.",
+                L"建议飞轮转速：500–10000 rpm / Suggested wheel speed: 500–10000 rpm.",
                 L"必须大于 0；物理步长固定 0.02 s / Must be positive; physics step stays 0.02 s.",
                 L"任务相关参数 / Mission-specific parameter.", L"任务相关参数 / Mission-specific parameter.",
                 L"任务相关参数 / Mission-specific parameter.", L"任务相关参数 / Mission-specific parameter.",
@@ -586,10 +586,10 @@ private:
                 L"实际初始机体系偏航角速度偏差 / Initial body-frame yaw-rate error."};
         } else if (scenario_ == ScenarioKind::Rocket) {
             tooltipTexts_ = {
-                L"建议实验范围 / Suggested experiment: ±5%.", L"建议实验范围 / Suggested experiment: ±10%.",
-                L"建议实验范围 / Suggested experiment: ±5%.", L"建议实验范围 / Suggested experiment: ±5%.",
-                L"建议实验范围 / Suggested experiment: ±20%.", L"建议实验范围 / Suggested experiment: ±20%.",
-                L"建议小角度范围 / Suggested small-angle range: ±1 deg.",
+                L"建议实验范围：±5% / Suggested experiment: ±5%.", L"建议实验范围：±10% / Suggested experiment: ±10%.",
+                L"建议实验范围：±5% / Suggested experiment: ±5%.", L"建议实验范围：±5% / Suggested experiment: ±5%.",
+                L"建议实验范围：±20% / Suggested experiment: ±20%.", L"建议实验范围：±20% / Suggested experiment: ±20%.",
+                L"建议小角度范围：±1 deg / Suggested small-angle range: ±1 deg.",
                 L"实际初始姿态相对标称参考 / Actual initial attitude relative to nominal reference.",
                 L"实际初始姿态相对标称参考 / Actual initial attitude relative to nominal reference.",
                 L"实际初始姿态相对标称参考 / Actual initial attitude relative to nominal reference.",
@@ -736,7 +736,7 @@ private:
         if (scenario_ == ScenarioKind::Satellite) {
             const auto& c = satelliteConfig_;
             fields = {{{L"半长轴 / Semi-major axis (km)", number(c.orbit.semiMajorAxisKm, 3)},
-                       {L"偏心率 / Eccentricity", number(c.orbit.eccentricity, 5)},
+                       {L"偏心率（无量纲） / Eccentricity (dimensionless)", number(c.orbit.eccentricity, 5)},
                        {L"倾角 / Inclination (deg)", number(c.orbit.inclinationDeg, 2)},
                        {L"升交点赤经 / RAAN (deg)", number(c.orbit.raanDeg, 2)},
                        {L"近地点幅角 / Arg. perigee (deg)", number(c.orbit.argumentOfPerigeeDeg, 2)},
@@ -799,20 +799,20 @@ private:
                      {L"仿真时长 / Duration (s)", number(c.durationSec, 0)},
                      {L"着陆点纬度 / Site latitude (deg)", number(c.landingSite.latitudeDeg, 4)},
                      {L"着陆点经度 / Site longitude (deg)", number(c.landingSite.longitudeDeg, 4)},
-                     {L"大气密度比例 / Density scale", number(c.atmosphereDensityScale, 3)},
+                     {L"大气密度比例（无量纲） / Density scale (dimensionless)", number(c.atmosphereDensityScale, 3)},
                      {L"北向风 / North wind (m/s)", number(c.windNedMps.x, 2)},
                      {L"东向风 / East wind (m/s)", number(c.windNedMps.y, 2)},
                      {L"制导频率 / Guidance rate (Hz)", number(c.guidanceFrequencyHz, 1)},
                      {L"着陆点火余量 / Burn margin (m)", number(c.landingBurnSafetyMarginM, 1)},
-                     {L"QP 预测步数 / QP horizon", number(c.landingQpHorizon, 0)},
+                     {L"QP 预测步数（步） / QP horizon (steps)", number(c.landingQpHorizon, 0)},
                      {L"QP 最大步长 / QP max dt (s)", number(c.landingQpDtSec, 3)},
                      {L"推力偏差 / Thrust bias (%)", number(c.vehicle.thrustBiasPercent, 2)},
-                     {L"末端位置权重 / Position weight", number(c.weightTerminalPosition, 3)},
-                     {L"末端速度权重 / Velocity weight", number(c.weightTerminalVelocity, 3)},
-                     {L"控制消耗权重 / Effort weight", number(c.weightControlEffort, 4)},
-                     {L"控制平滑权重 / Smoothness weight", number(c.weightControlSmoothness, 3)},
-                     {L"求解容差 / Solver tolerance", compact(c.solverTolerance, 3)},
-                     {L"最大迭代 / Max iterations", number(c.solverMaxIterations, 0)}}};
+                     {L"末端位置权重（无量纲） / Position weight (dimensionless)", number(c.weightTerminalPosition, 3)},
+                     {L"末端速度权重（无量纲） / Velocity weight (dimensionless)", number(c.weightTerminalVelocity, 3)},
+                     {L"控制消耗权重（无量纲） / Effort weight (dimensionless)", number(c.weightControlEffort, 4)},
+                     {L"控制平滑权重（无量纲） / Smoothness weight (dimensionless)", number(c.weightControlSmoothness, 3)},
+                     {L"求解容差（无量纲） / Solver tolerance (dimensionless)", compact(c.solverTolerance, 3)},
+                     {L"最大迭代（次） / Max iterations (iterations)", number(c.solverMaxIterations, 0)}}};
         }
 
         const auto& d = rocketConfig_.deviations;
@@ -1274,49 +1274,49 @@ private:
 
     void fillPlotCombos(bool preserveSelection = false) {
         const std::vector<std::wstring> satelliteNames{
-            L"参考/实际俯仰 / Ref vs actual pitch", L"姿态误差 / Attitude error",
-            L"角速度 / Angular rate", L"控制力矩 / Control torque",
-            L"飞轮转速 / Wheel speed", L"执行器饱和 / Saturation",
-            L"指向误差 / Pointing error", L"轨道高度 / Orbit altitude",
-            L"标称/实际轨道高度 / Nominal vs actual altitude",
-            L"轨道位置误差 / Orbit position error",
-            L"径向/航向误差 / Radial vs along-track error",
-            L"法向位置误差 / Cross-track position error",
-            L"轨道速度误差 / Orbit velocity error",
-            L"轨控推力 / Orbit-control thrust",
-            L"剩余推进剂 / Propellant remaining",
-            L"累计速度增量 / Cumulative delta-v",
-            L"轨道比能量误差 / Specific-energy error",
-            L"半长轴误差 / Semi-major-axis error",
-            L"偏心率误差 / Eccentricity error",
-            L"倾角误差 / Inclination error"};
+            L"参考/实际俯仰 / Ref vs actual pitch (deg)", L"姿态误差 / Attitude error (deg)",
+            L"角速度 / Angular rate (deg/s)", L"控制力矩 / Control torque (N·m)",
+            L"飞轮转速 / Wheel speed (rpm)", L"执行器饱和（0/1） / Saturation (0/1)",
+            L"指向误差 / Pointing error (deg)", L"轨道高度 / Orbit altitude (km)",
+            L"标称/实际轨道高度 / Nominal vs actual altitude (km)",
+            L"轨道位置误差 / Orbit position error (m)",
+            L"径向/航向误差 / Radial vs along-track error (m)",
+            L"法向位置误差 / Cross-track position error (m)",
+            L"轨道速度误差 / Orbit velocity error (m/s)",
+            L"轨控推力 / Orbit-control thrust (N)",
+            L"剩余推进剂 / Propellant remaining (kg)",
+            L"累计速度增量 / Cumulative delta-v (m/s)",
+            L"轨道比能量误差 / Specific-energy error (kJ/kg)",
+            L"半长轴误差 / Semi-major-axis error (km)",
+            L"偏心率误差（无量纲） / Eccentricity error (dimensionless)",
+            L"倾角误差 / Inclination error (deg)"};
         const std::vector<std::wstring> rocketNames{
-            L"标称/实际高度 / Nominal vs actual altitude",
-            L"标称/实际速度 / Nominal vs actual velocity",
-            L"标称/实际俯仰 / Nominal vs actual pitch",
-            L"姿态误差 / Attitude error", L"角速度 / Angular rate",
-            L"控制力矩 / Control torque", L"TVC 摆角 / TVC deflection",
-            L"质量 / Mass", L"动压 / Dynamic pressure",
-            L"位置误差 / Position error", L"横向误差 / Cross-track error",
-            L"实际轨道高度 / Actual orbital altitude",
-            L"实际半长轴 / Actual semi-major axis",
-            L"实际偏心率 / Actual eccentricity",
-            L"实际倾角 / Actual inclination",
-            L"径向/航向位置误差 / Radial vs along-track error",
-            L"制导俯仰/偏航修正 / Guidance pitch vs yaw correction",
-            L"剩余推进剂 / Propellant remaining",
-            L"轨道比能量误差 / Specific-energy error"};
+            L"标称/实际高度 / Nominal vs actual altitude (km)",
+            L"标称/实际速度 / Nominal vs actual velocity (km/s)",
+            L"标称/实际俯仰 / Nominal vs actual pitch (deg)",
+            L"姿态误差 / Attitude error (deg)", L"角速度 / Angular rate (deg/s)",
+            L"控制力矩 / Control torque (kN·m)", L"TVC 摆角 / TVC deflection (deg)",
+            L"质量 / Mass (t)", L"动压 / Dynamic pressure (kPa)",
+            L"位置误差 / Position error (m)", L"横向误差 / Cross-track error (m)",
+            L"实际轨道高度 / Actual orbital altitude (km)",
+            L"实际半长轴 / Actual semi-major axis (km)",
+            L"实际偏心率（无量纲） / Actual eccentricity (dimensionless)",
+            L"实际倾角 / Actual inclination (deg)",
+            L"径向/航向位置误差 / Radial vs along-track error (m)",
+            L"制导俯仰/偏航修正 / Guidance pitch vs yaw correction (deg)",
+            L"剩余推进剂 / Propellant remaining (t)",
+            L"轨道比能量误差 / Specific-energy error (kJ/kg)"};
         const std::vector<std::wstring> recoveryNames{
-            L"高度/地面距离 / Altitude vs ground distance",
-            L"水平/垂直速度 / Horizontal vs vertical velocity",
-            L"当前位置/预测落点误差 / Current vs predicted landing error",
-            L"推力 / Thrust", L"剩余推进剂 / Propellant remaining",
-            L"TVC 俯仰/偏航 / TVC pitch vs yaw",
-            L"栅格舵最大偏角 / Max grid-fin deflection",
-            L"姿态误差 / Attitude error", L"动压 / Dynamic pressure",
-            L"高度/制动距离 / Altitude vs braking distance",
-            L"QP 求解时间 / QP solve time", L"QP 成功率 / QP success rate",
-            L"回收阶段编号 / Recovery phase"};
+            L"高度/地面距离 / Altitude vs ground distance (km)",
+            L"水平/垂直速度 / Horizontal vs vertical velocity (m/s)",
+            L"当前位置/预测落点误差 / Current vs predicted landing error (m)",
+            L"推力 / Thrust (kN)", L"剩余推进剂 / Propellant remaining (t)",
+            L"TVC 俯仰/偏航 / TVC pitch vs yaw (deg)",
+            L"栅格舵最大偏角 / Max grid-fin deflection (deg)",
+            L"姿态误差 / Attitude error (deg)", L"动压 / Dynamic pressure (kPa)",
+            L"高度/制动距离 / Altitude vs braking distance (m)",
+            L"QP 求解时间 / QP solve time (ms)", L"QP 成功率 / QP success rate (%)",
+            L"回收阶段编号（无量纲） / Recovery phase (dimensionless)"};
         const auto& names = scenario_ == ScenarioKind::Satellite ? satelliteNames
             : (scenario_ == ScenarioKind::Rocket ? rocketNames : recoveryNames);
         const std::array<int, 4> satelliteDefaults{1, 9, 13, 8};
@@ -2199,18 +2199,18 @@ private:
             const std::array<const wchar_t*, 20> units{
                 L"deg", L"deg", L"deg/s", L"N·m", L"rpm", L"0/1", L"deg", L"km",
                 L"km", L"m", L"m", L"m", L"m/s", L"N", L"kg", L"m/s",
-                L"kJ/kg", L"km", L"", L"deg"};
+                L"kJ/kg", L"km", L"-", L"deg"};
             return units[std::clamp(selection, 0, 19)];
         }
         if (scenario_ == ScenarioKind::Recovery) {
             const std::array<const wchar_t*, 13> units{
                 L"km", L"m/s", L"m", L"kN", L"t", L"deg", L"deg",
-                L"deg", L"kPa", L"m", L"ms", L"%", L""};
+                L"deg", L"kPa", L"m", L"ms", L"%", L"-"};
             return units[std::clamp(selection, 0, 12)];
         }
         const std::array<const wchar_t*, 19> units{L"km", L"km/s", L"deg", L"deg", L"deg/s", L"kN·m",
                                                    L"deg", L"t", L"kPa", L"m", L"m", L"km",
-                                                   L"km", L"", L"deg", L"m", L"deg", L"t", L"kJ/kg"};
+                                                   L"km", L"-", L"deg", L"m", L"deg", L"t", L"kJ/kg"};
         return units[std::clamp(selection, 0, 18)];
     }
 
@@ -2323,6 +2323,9 @@ private:
             + (plotUnit(selection).empty() ? L"" : L" " + plotUnit(selection));
         drawText(dc, legend, {chart.left, chart.bottom + 2, chart.right, rect.bottom - 3}, fontTiny_, kMuted,
                  DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+        drawText(dc, L"时间 (s) / Time (s)",
+                 {chart.left, chart.bottom + 2, chart.right, rect.bottom - 3}, fontTiny_, kMuted,
+                 DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     }
 
     void drawMetrics(HDC dc, const RECT& rect) {

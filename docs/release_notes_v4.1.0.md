@@ -2,6 +2,12 @@
 
 正式发布于 2026-09-14。
 
+## 维护更新（2026-09-17）
+
+- 修复中文模式下双语标签切换时丢失单位的问题，主参数区、曲线、姿态控制、轨道控制、轨迹制导、扰动设置和参数提示均保留实际单位。
+- 偏心率、控制权重等无量纲参数，以及 QP 预测步数和最大迭代次数，现已明确标注。
+- 单文件 EXE 与 Portable ZIP 已同步重新构建并更新。
+
 ## 下载方式
 
 - **单文件 EXE（推荐）**：`AeroSys_Lab_v4.1_Windows_x64.exe`，适合绝大多数用户，下载后直接双击运行。
@@ -25,5 +31,5 @@
 - `recovery_tests`：六组标准工况全部通过完整状态序列并满足安全 TOUCHDOWN 门槛。
 - 80 km 默认状态下，组合扰动工况落点误差约 0.023 m、垂直触地速度约 0.118 m/s。
 - 输出文件：`build/Release/AeroSysLab.exe`。
-- 单文件 EXE SHA-256：`F0800FDB1DD14C285C309BF1CFC234DBDDFE93E6988C5B9C9BD7BC8843E3C655`。
-- Portable ZIP SHA-256：`53D2E2A9ED760B223E10DA4F7064AF7716E59E0AF7FB7C73D039057FA4967AD9`。
+- 单文件 EXE SHA-256：`AA92011169B11C386BE222C571E0F3CAFD607A38C3194842FB6F2DBD080DAB21`。
+- Portable ZIP SHA-256：`2F4EAD83B6C0474EED066F0EE6E2EE042EC08ED7D321DF1593C6C5F9273BF33E`。
